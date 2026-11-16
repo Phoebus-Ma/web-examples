@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ms-clock</title>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            background: #ffffff;
+            color: #111111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        }
+
+        #clock {
+            font-size: clamp(80px, 20vw, 150px);
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="clock">00:00:00.000</div>
+    <script>
+        const el = document.getElementById('clock');
+        const pad = (n, w) => String(n).padStart(w, '0');
+
+        function tick() {
+            const d = new Date();
+            el.textContent =
+                pad(d.getHours(),   2) + ':' +
+                pad(d.getMinutes(), 2) + ':' +
+                pad(d.getSeconds(), 2) + '.' +
+                pad(d.getMilliseconds(), 3);
+
+            requestAnimationFrame(tick);
+        }
+
+        requestAnimationFrame(tick);
+    </script>
+</body>
+
+</html>
