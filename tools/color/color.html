@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选色卡</title>
+    <style>
+        body {
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #f5f6f8;
+            display: flex;
+            justify-content: center;
+            padding: 40px 16px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, .08);
+            padding: 24px;
+            max-width: 640px;
+            width: 100%;
+        }
+
+        h2 {
+            margin: 0 0 16px;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 6px;
+        }
+
+        .swatch {
+            aspect-ratio: 1 / 1;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform .12s, border-color .12s, box-shadow .12s;
+        }
+
+        .swatch:hover {
+            transform: scale(1.12);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+            z-index: 1;
+            position: relative;
+        }
+
+        .swatch.selected {
+            border-color: #333;
+            box-shadow: 0 0 0 2px #fff inset;
+        }
+
+        .result {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .result input {
+            flex: 1;
+            padding: 10px 12px;
+            font-size: 15px;
+            font-family: Consolas, monospace;
+            border: 1px solid #d0d3d8;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .result input:focus {
+            border-color: #4a7dff;
+        }
+
+        .preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid #d0d3d8;
+            background: #fff;
+            flex-shrink: 0;
+        }
+
+        .copy-btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #4a7dff;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover {
+            background: #3a6ae0;
+        }
+
+        .tip {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+        <h2>🎨 选色卡</h2>
+        <div class="grid" id="grid"></div>
+
+        <div class="result">
+            <div class="preview" id="preview"></div>
+            <input type="text" id="hexInput" placeholder="点击上方色块获取颜色编码" readonly>
+            <button class="copy-btn" onclick="copyHex()">复制</button>
+        </div>
+        <div class="tip">点击色块即可选择颜色，编码同时会自动复制到剪贴板</div>
+    </div>
+
+    <script>
+        // 生成调色板：10 行 × 8 列 = 80 色
+        // 行 = 亮度/饱和度档位，列 = 色相；最后一列补充黑白灰
+        const rows = [
+            { s: 85, l: 88 },  // 浅色
+            { s: 85, l: 76 },
+            { s: 85, l: 64 },
+            { s: 85, l: 52 },  // 标准色
+            { s: 85, l: 42 },
+            { s: 85, l: 34 },
+            { s: 70, l: 26 },  // 深色
+            { s: 55, l: 18 },
+            { s: 40, l: 12 },
+            { s: 0,  l: 96 },  // 灰阶行
+        ];
+
+        const hues  = [0, 30, 60, 120, 180, 210, 260, 300];
+        const grays = ['#ffffff', '#f2f2f2', '#e0e0e0', '#c8c8c8', '#a8a8a8', '#808080', '#555555', '#000000'];
+
+        const grid     = document.getElementById('grid');
+        const hexInput = document.getElementById('hexInput');
+        const preview  = document.getElementById('preview');
+
+        function hslToHex(h, s, l) {
+            s /= 100;
+            l /= 100;
+            const k     = n => (n + h / 30) % 12;
+            const a     = s * Math.min(l, 1 - l);
+            const f     = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+            const to255 = x => Math.round(255 * x).toString(16).padStart(2, '0');
+
+            return '#' + to255(f(0)) + to255(f(8)) + to255(f(4));
+        }
+
+        let index = 0;
+        rows.forEach((row, r) => {
+            for (let c = 0; c < 8; c++) {
+                let hex;
+                if (r === rows.length - 1) {
+                    hex = grays[c];          // 最后一行为灰阶
+                } else {
+                    hex = hslToHex(hues[c], row.s, row.l);
+                }
+
+                const div            = document.createElement('div');
+                div.className        = 'swatch';
+                div.style.background = hex;
+                div.dataset.hex      = hex;
+                div.title            = hex;
+
+                div.addEventListener('click', () => {
+                    document.querySelectorAll('.swatch.selected')
+                        .forEach(el => el.classList.remove('selected'));
+                    div.classList.add('selected');
+                    select(hex);
+                });
+
+                grid.appendChild(div);
+                index++;
+            }
+        });
+
+        function select(hex) {
+            hexInput.value = hex;
+            preview.style.background = hex;
+            // 自动复制
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(hex).catch(() => { });
+            }
+        }
+
+        function copyHex() {
+            const val = hexInput.value;
+            if (!val) return;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(val).then(() => {
+                    const btn = document.querySelector('.copy-btn');
+                    btn.textContent = '已复制 ✓';
+                    setTimeout(() => btn.textContent = '复制', 1200);
+                });
+            }
+        }
+    </script>
+
+</body>
+
+</html>
