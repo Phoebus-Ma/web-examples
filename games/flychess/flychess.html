@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双六棋 · Sugoroku</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(1200px 800px at 70% -10%, #2b3a67 0%, #141a2e 55%, #0b0f1d 100%);
+            color: #eef1f8;
+            font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+        }
+
+        .app {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 18px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 26px;
+            letter-spacing: 1px;
+            background: linear-gradient(90deg, #ffd166, #ff9f43 60%, #ff6b6b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        h1 .en {
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            opacity: .9;
+        }
+
+        header .sub {
+            margin: 4px 0 0;
+            font-size: 12px;
+            color: rgba(255, 255, 255, .55);
+        }
+
+        .ctrl {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-ghost {
+            padding: 7px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            color: rgba(255, 255, 255, .85);
+            background: rgba(255, 255, 255, .07);
+            border: 1px solid rgba(255, 255, 255, .16);
+            transition: .15s;
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, .14);
+        }
+
+        .layout {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            margin-top: 14px;
+        }
+
+        /* ---------- 棋盘 ---------- */
+        .board-wrap {
+            flex: 1 1 620px;
+            position: relative;
+            min-width: 0;
+        }
+
+        .board {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 6px;
+            aspect-ratio: 2 / 1;
+            background: rgba(255, 255, 255, .045);
+            border: 1px solid rgba(255, 255, 255, .09);
+            border-radius: 16px;
+            padding: 12px;
+        }
+
+        .cell {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, .07);
+            border: 1px solid rgba(255, 255, 255, .1);
+            border-radius: 10px;
+            font-size: 12.5px;
+            color: rgba(255, 255, 255, .85);
+            text-align: center;
+            line-height: 1.25;
+            padding: 2px;
+        }
+
+        .cell .idx {
+            position: absolute;
+            top: 3px;
+            left: 6px;
+            font-size: 9px;
+            opacity: .4;
+        }
+
+        .cell .big {
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .cell .ev {
+            font-weight: 700;
+            font-size: 11.5px;
+        }
+
+        .cell.start {
+            background: rgba(87, 199, 133, .28);
+            border-color: rgba(87, 199, 133, .6);
+        }
+
+        .cell.goal {
+            background: rgba(255, 209, 102, .26);
+            border-color: rgba(255, 209, 102, .7);
+        }
+
+        .cell.ev-advance {
+            background: rgba(87, 199, 133, .22);
+            border-color: rgba(87, 199, 133, .5);
+        }
+
+        .cell.ev-back {
+            background: rgba(239, 123, 123, .22);
+            border-color: rgba(239, 123, 123, .5);
+        }
+
+        .cell.ev-skip {
+            background: rgba(165, 139, 224, .24);
+            border-color: rgba(165, 139, 224, .5);
+        }
+
+        .cell.ev-again {
+            background: rgba(79, 201, 221, .22);
+            border-color: rgba(79, 201, 221, .5);
+        }
+
+        /* ---------- 棋子 ---------- */
+        .piece {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 26px;
+            height: 26px;
+            z-index: 3;
+            transition: transform .18s ease;
+            filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .45));
+            pointer-events: none;
+        }
+
+        .piece .body {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2.5px solid rgba(255, 255, 255, .95);
+        }
+
+        .piece.p0 .body {
+            background: radial-gradient(circle at 30% 30%, #ff9a8b, #ff5a5f 60%, #d63b52);
+        }
+
+        .piece.p1 .body {
+            background: radial-gradient(circle at 30% 30%, #74c0fc, #339af0 60%, #1864ab);
+        }
+
+        .piece.active .body {
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, .3);
+        }
+
+        .body.hop {
+            animation: hop .18s ease;
+        }
+
+        @keyframes hop {
+            0% {
+                transform: translateY(0);
+            }
+
+            45% {
+                transform: translateY(-11px) scale(1.08);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        /* ---------- 事件提示 ---------- */
+        .toast {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translate(-50%, -8px);
+            background: rgba(10, 14, 25, .92);
+            border: 1px solid rgba(255, 255, 255, .2);
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0;
+            pointer-events: none;
+            transition: .25s;
+            z-index: 6;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        /* ---------- 右侧面板 ---------- */
+        .panel {
+            flex: 0 0 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .players {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .pcard {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .06);
+            border: 1px solid rgba(255, 255, 255, .1);
+            transition: .2s;
+        }
+
+        .pcard.active {
+            background: rgba(255, 255, 255, .1);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+        }
+
+        #p0card.active {
+            border-color: #ff6b6b;
+        }
+
+        #p1card.active {
+            border-color: #4dabf7;
+        }
+
+        .avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            flex: none;
+            border: 2px solid rgba(255, 255, 255, .9);
+        }
+
+        .a0 {
+            background: radial-gradient(circle at 30% 30%, #ff9a8b, #ff5a5f 60%, #d63b52);
+        }
+
+        .a1 {
+            background: radial-gradient(circle at 30% 30%, #74c0fc, #339af0 60%, #1864ab);
+        }
+
+        .pinfo {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .pname {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .psub {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            font-size: 11px;
+            color: rgba(255, 255, 255, .65);
+        }
+
+        .badge {
+            font-size: 10px;
+            padding: 1px 7px;
+            border-radius: 8px;
+            background: rgba(165, 139, 224, .4);
+            color: #e6dcff;
+        }
+
+        .badge.b-again {
+            background: rgba(79, 201, 221, .35);
+            color: #d3f6ff;
+        }
+
+        .dice-box {
+            background: rgba(255, 255, 255, .06);
+            border: 1px solid rgba(255, 255, 255, .1);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #turnHint {
+            font-size: 13px;
+            color: rgba(255, 255, 255, .85);
+            text-align: center;
+            min-height: 18px;
+        }
+
+        .dice {
+            width: 64px;
+            height: 64px;
+            background: #f6f7fb;
+            border-radius: 14px;
+            display: grid;
+            grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+            padding: 9px;
+            gap: 2px;
+            box-shadow: inset 0 -3px 6px rgba(0, 0, 0, .15), 0 6px 14px rgba(0, 0, 0, .35);
+        }
+
+        .dice.rolling {
+            animation: shake .12s infinite;
+        }
+
+        @keyframes shake {
+            0% {
+                transform: rotate(-12deg) scale(1.03);
+            }
+
+            50% {
+                transform: rotate(10deg) scale(1.07);
+            }
+
+            100% {
+                transform: rotate(-8deg) scale(1.03);
+            }
+        }
+
+        .dice.pop {
+            animation: pop .3s ease;
+        }
+
+        @keyframes pop {
+            0% {
+                transform: scale(.85);
+            }
+
+            60% {
+                transform: scale(1.12);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .pip {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #1f2430;
+            visibility: hidden;
+            align-self: center;
+            justify-self: center;
+        }
+
+        .pip.on {
+            visibility: visible;
+        }
+
+        .btn-primary {
+            padding: 10px 26px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #ffd166, #ff9f43);
+            color: #23252b;
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: 2px;
+            transition: .15s;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            filter: brightness(1.08);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            opacity: .4;
+            cursor: default;
+        }
+
+        .btn-blue {
+            padding: 10px 26px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #74c0fc, #339af0);
+            color: #0d2136;
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: 2px;
+        }
+
+        .btn-blue:hover {
+            filter: brightness(1.08);
+        }
+
+        .log-box {
+            background: rgba(255, 255, 255, .06);
+            border: 1px solid rgba(255, 255, 255, .1);
+            border-radius: 14px;
+            padding: 12px 14px;
+        }
+
+        .box-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, .55);
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        #log {
+            max-height: 190px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, .8);
+            scrollbar-width: thin;
+        }
+
+        .log-line {
+            display: flex;
+            gap: 6px;
+            align-items: baseline;
+            line-height: 1.5;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex: none;
+            position: relative;
+            top: 1px;
+        }
+
+        /* ---------- 弹层 ---------- */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            background: rgba(8, 10, 20, .72);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        .dialog {
+            background: #171d31;
+            border: 1px solid rgba(255, 255, 255, .14);
+            border-radius: 18px;
+            padding: 26px 30px;
+            max-width: 430px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+        }
+
+        .dialog h2 {
+            margin: 0 0 8px;
+            font-size: 22px;
+        }
+
+        .dialog .muted {
+            font-size: 12.5px;
+            color: rgba(255, 255, 255, .55);
+            margin: 0 0 14px;
+        }
+
+        .rules {
+            text-align: left;
+            margin: 0 0 18px;
+            padding-left: 18px;
+            font-size: 13px;
+            line-height: 2;
+            color: rgba(255, 255, 255, .8);
+        }
+
+        .mode-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        #confetti {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 25;
+        }
+
+        #confetti i {
+            position: absolute;
+            top: -16px;
+            width: 8px;
+            height: 14px;
+            border-radius: 2px;
+            animation: fall linear forwards;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(110vh) rotate(720deg);
+            }
+        }
+
+        @media (max-width: 1000px) {
+            .panel {
+                flex: 1 1 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <header>
+            <div>
+                <h1>双六棋 <span class="en">SUGOROKU</span></h1>
+                <p class="sub">掷骰前进 · 事件奇遇 · 恰好抵达终点者胜</p>
+            </div>
+            <div class="ctrl">
+                <button id="sndBtn" class="btn-ghost">音效：开</button>
+                <button id="restartBtn" class="btn-ghost">重新开始</button>
+            </div>
+        </header>
+
+        <div class="layout">
+            <div class="board-wrap">
+                <div class="board" id="board"></div>
+                <div class="toast" id="toast"></div>
+            </div>
+
+            <aside class="panel">
+                <div class="players">
+                    <div class="pcard" id="p0card">
+                        <span class="avatar a0"></span>
+                        <div class="pinfo">
+                            <div class="pname" id="p0name">玩家1</div>
+                            <div class="psub"><span class="pos">位置 0 / 31</span><span class="badges"></span></div>
+                        </div>
+                    </div>
+                    <div class="pcard" id="p1card">
+                        <span class="avatar a1"></span>
+                        <div class="pinfo">
+                            <div class="pname" id="p1name">玩家2</div>
+                            <div class="psub"><span class="pos">位置 0 / 31</span><span class="badges"></span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dice-box">
+                    <div id="turnHint">选择模式后开始游戏</div>
+                    <div class="dice" id="dice"></div>
+                    <button id="rollBtn" class="btn-primary" disabled>掷 骰 子</button>
+                </div>
+
+                <div class="log-box">
+                    <div class="box-title">战 报</div>
+                    <div id="log"></div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- 开始菜单 -->
+    <div class="overlay" id="overlayStart">
+        <div class="dialog">
+            <h2>双六棋 · Sugoroku</h2>
+            <p class="muted">经典双六玩法：掷骰前进，触发奇遇，恰好抵达终点即胜</p>
+            <ul class="rules">
+                <li>每回合掷一颗骰子，按点数前进。</li>
+                <li>步数超过终点时，会从终点反弹回来。</li>
+                <li>棋盘上随机分布事件格：前进、后退、停一轮、再掷一次。</li>
+                <li>恰好落在终点格的一方获胜。</li>
+            </ul>
+            <div class="mode-row">
+                <button class="btn-primary" data-mode="pve">人机对战</button>
+                <button class="btn-blue" data-mode="pvp">双人对战</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 胜利弹层 -->
+    <div class="overlay hidden" id="overlayWin">
+        <div class="dialog">
+            <h2 id="winTitle"></h2>
+            <p class="muted" id="winSub"></p>
+            <div class="mode-row">
+                <button class="btn-primary" id="againBtn">再来一局</button>
+                <button class="btn-ghost" id="menuBtn">返回菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confetti"></div>
+
+    <script>
+        (() => {
+            'use strict';
+
+            const COLS = 8, ROWS = 4, GOAL = COLS * ROWS - 1, EVENT_COUNT = 11;
+            const $ = s => document.querySelector(s);
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+            const boardEl = $('#board'),
+                  toastEl = $('#toast'),
+                  logEl   = $('#log'),
+                  diceEl  = $('#dice'), rollBtn = $('#rollBtn');
+            const pcards  = [$('#p0card'), $('#p1card')];
+
+            const EV_META = {
+                advance : { cls: 'ev-advance', color: '#57c785', label: e => `前进 ${e.amount} 格`, msg: e => `顺风方舟！前进 ${e.amount} 格`, good: true  },
+                back    : { cls: 'ev-back',    color: '#ef7b7b', label: e => `后退 ${e.amount} 格`, msg: e => `踩中陷阱！后退 ${e.amount} 格`, good: false },
+                skip    : { cls: 'ev-skip',    color: '#a58be0', label: () => '停一轮', msg: () => '时空牢笼！下一轮停止行动', good: false },
+                again   : { cls: 'ev-again',   color: '#4fc9dd', label: () => '再掷一次', msg: () => '疾风加持！立刻再掷一次', good: true  },
+            };
+
+            const state = {
+                mode: null,
+                cur: 0,
+                busy: false,
+                over: false,
+                round: 0,
+                events: new Map()
+            };
+
+            let players    = [],
+                cells      = [],
+                pieceEls   = [],
+                aiTimer    = null,
+                toastTimer = null;
+
+            /* ============ 音效（WebAudio，无外部资源） ============ */
+            let actx = null, muted = false;
+            function ac() {
+                if (!actx) {
+                    try {
+                        actx = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    catch (e) {}
+                }
+
+                if (actx && actx.state === 'suspended')
+                    actx.resume();
+
+                return actx;
+            }
+
+            function tone(f, dur = 0.09, type = 'sine', vol = 0.12, delay = 0) {
+                if (muted) return;
+                const c = ac();
+                if (!c)
+                    return;
+
+                const t = c.currentTime + delay;
+                const o = c.createOscillator(), g = c.createGain();
+
+                o.type = type;
+                o.frequency.value = f;
+                g.gain.setValueAtTime(vol, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                o.connect(g).connect(c.destination);
+                o.start(t);
+                o.stop(t + dur + 0.02);
+            }
+
+            const sfxTick = () => tone(480 + Math.random() * 420, 0.03, 'square', 0.045);
+            const sfxStep = () => tone(600, 0.05, 'triangle', 0.08);
+            const sfxEvent = good => {
+                if (good) {
+                    tone(523, .1);
+                    tone(659, .1, 'sine', .12, .1);
+                    tone(784, .16, 'sine', .12, .2);
+                }
+                else {
+                    tone(392, .12, 'sawtooth', .09);
+                    tone(294, .18, 'sawtooth', .09, .12);
+                }
+            };
+
+            const sfxWin = () => [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, .18, 'triangle', .13, i * .12));
+
+            /* ============ 棋盘生成 ============ */
+            function shuffle(a) {
+                for (let i = a.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [a[i], a[j]] = [a[j], a[i]];
+                }
+
+                return a;
+            }
+
+            function weightedType() {
+                const r = Math.random();
+                if (r < 0.3) return 'advance';
+                if (r < 0.6) return 'back';
+                if (r < 0.8) return 'skip';
+
+                return 'again';
+            }
+
+            function genEvents() {
+                const idxs   = shuffle(Array.from({ length: GOAL - 1 }, (_, k) => k + 1));
+                const picked = idxs.slice(0, EVENT_COUNT);
+                const base   = shuffle(['advance', 'back', 'skip', 'again']);
+                const map    = new Map();
+
+                picked.forEach((cell, i) => {
+                    const type = i < 4 ? base[i] : weightedType();
+                    const amount = (type === 'advance' || type === 'back') ? (Math.random() < 0.5 ? 2 : 3) : 0;
+                    map.set(cell, { type, amount });
+                });
+
+                return map;
+            }
+
+            function cellRC(i) {
+                const band = Math.floor(i / COLS), pos = i % COLS;
+                return { row: ROWS - band, col: band % 2 === 0 ? pos + 1 : COLS - pos };
+            }
+
+            function buildBoard() {
+                boardEl.innerHTML = '';
+                cells = [];
+                state.events = genEvents();
+                for (let i = 0; i <= GOAL; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    const rc = cellRC(i);
+                    cell.style.gridRow = rc.row;
+                    cell.style.gridColumn = rc.col;
+
+                    if (i === 0) {
+                        cell.classList.add('start');
+                        cell.innerHTML = '<span class="big">出发</span>';
+                    } else if (i === GOAL) {
+                        cell.classList.add('goal');
+                        cell.innerHTML = `<span class="idx">${i}</span><span class="big">终点</span>`;
+                    } else {
+                        const ev = state.events.get(i);
+
+                        if (ev) {
+                            cell.classList.add(EV_META[ev.type].cls);
+                            cell.innerHTML = `<span class="idx">${i}</span><span class="ev">${EV_META[ev.type].label(ev)}</span>`;
+                        } else {
+                            cell.innerHTML = `<span class="idx">${i}</span>`;
+                        }
+                    }
+
+                    boardEl.appendChild(cell);
+                    cells.push(cell);
+                }
+
+                for (let pi = 0; pi < 2; pi++) {
+                    const piece     = document.createElement('div');
+                    piece.className = `piece p${pi}`;
+                    piece.innerHTML = '<div class="body"></div>';
+                    boardEl.appendChild(piece);
+
+                    pieceEls[pi] = piece;
+                    positionPiece(pi);
+                }
+            }
+
+            function positionPiece(pi) {
+                const el = pieceEls[pi];
+                if (!el)
+                    return;
+
+                const cell = cells[players[pi].pos];
+                let dx = 0, dy = 0;
+
+                if (players[pi ^ 1].pos === players[pi].pos) {
+                    dx = pi === 0 ? -9 : 9;
+                    dy = pi === 0 ? -8 : 8;
+                }
+
+                const x = cell.offsetLeft + cell.offsetWidth / 2 - 13 + dx;
+                const y = cell.offsetTop + cell.offsetHeight / 2 - 13 + dy;
+                el.style.transform = `translate(${x}px, ${y}px)`;
+            }
+
+            /* ============ UI 更新 ============ */
+            function toast(text, color) {
+                toastEl.textContent       = text;
+                toastEl.style.borderColor = color || 'rgba(255,255,255,.2)';
+                toastEl.classList.add('show');
+                clearTimeout(toastTimer);
+
+                toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1400);
+            }
+
+            function log(msg, pi) {
+                const line     = document.createElement('div');
+                line.className = 'log-line';
+
+                if (pi != null) {
+                    const d            = document.createElement('span');
+                    d.className        = 'dot';
+                    d.style.background = players[pi].color;
+                    line.appendChild(d);
+                }
+
+                const t = document.createElement('span');
+                t.textContent = msg;
+                line.appendChild(t);
+                logEl.appendChild(line);
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+
+            function renderPlayers() {
+                players.forEach((p, i) => {
+                    pcards[i].classList.toggle('active', i === state.cur && !state.over);
+                    pcards[i].querySelector('.pos').textContent = `位置 ${p.pos} / ${GOAL}`;
+                    pcards[i].querySelector('.badges').innerHTML =
+                        (p.skipNext ? '<span class="badge">下轮暂停</span>' : '') +
+                        (p.again ? '<span class="badge b-again">再掷一次</span>' : '');
+                });
+            }
+
+            function updateTurnUI() {
+                rollBtn.disabled = state.busy || state.over || !state.mode || (state.mode === 'pve' && state.cur === 1);
+                const hint = $('#turnHint');
+
+                if (!state.mode) {
+                    hint.textContent = '选择模式后开始游戏';
+                }
+                else if (state.over) {
+                    hint.textContent = '本局已结束';
+                }
+                else {
+                    const p = players[state.cur];
+                    let t   = `轮到 ${p.name}`;
+                    t += (state.mode === 'pve' && state.cur === 1) ? '（电脑思考中…）' : '，点击掷骰子';
+
+                    if (p.again)
+                        t += ' · 再掷一次！';
+
+                    if (p.skipNext)
+                        t += ' · 下轮暂停';
+
+                    hint.textContent = t;
+                }
+
+                pieceEls.forEach((el, i) => el.classList.toggle('active', !state.over && !!state.mode && i === state.cur));
+            }
+
+            /* ============ 骰子 ============ */
+            function setDiceFace(v) {
+                const pats = {
+                    1: [4],
+                    2: [0, 8],
+                    3: [0, 4, 8],
+                    4: [0, 2, 6, 8],
+                    5: [0, 2, 4, 6, 8],
+                    6: [0, 2, 3, 5, 6, 8]
+                };
+                const on = new Set(pats[v]);
+
+                for (let i = 0; i < 9; i++)
+                    diceEl.children[i].classList.toggle('on', on.has(i));
+            }
+
+            function rollDiceAnim() {
+                return new Promise(res => {
+                    diceEl.classList.add('rolling');
+                    const iv = setInterval(() => {
+                        setDiceFace(1 + Math.floor(Math.random() * 6));
+                        sfxTick();
+                    }, 85);
+
+                    setTimeout(() => {
+                        clearInterval(iv);
+                        diceEl.classList.remove('rolling');
+                        const v = 1 + Math.floor(Math.random() * 6);
+                        setDiceFace(v);
+                        diceEl.classList.add('pop');
+                        setTimeout(() => diceEl.classList.remove('pop'), 320);
+                        res(v);
+                    }, 720);
+                });
+            }
+
+            /* ============ 移动与事件 ============ */
+            async function moveBy(pi, delta) {
+                const p = players[pi];
+                const path = [];
+                if (delta > 0) {
+                    const target = p.pos + delta;
+                    if (target > GOAL) {
+                        const over = target - GOAL;
+                        for (let s = p.pos + 1; s <= GOAL; s++)
+                            path.push(s);
+
+                        for (let k = 0; k < over; k++)
+                            path.push(GOAL - 1 - k);
+
+                        log(`${p.name} 冲过了终点，反弹 ${over} 格`, pi);
+                    } else {
+                        for (let s = p.pos + 1; s <= target; s++)
+                            path.push(s);
+                    }
+                } else {
+                    const target = Math.max(0, p.pos + delta);
+                    for (let s = p.pos - 1; s >= target; s--)
+                        path.push(s);
+                }
+
+                for (const c of path) {
+                    p.pos = c;
+                    positionPiece(pi);
+                    renderPlayers();
+                    const body = pieceEls[pi].firstElementChild;
+                    body.classList.remove('hop');
+                    void body.offsetWidth;
+                    body.classList.add('hop');
+                    sfxStep();
+
+                    await sleep(200);
+                }
+
+                renderPlayers();
+            }
+
+            async function applyEvents(pi, depth) {
+                const p = players[pi];
+                const ev = state.events.get(p.pos);
+
+                if (!ev || depth >= 3)
+                    return;
+
+                const meta = EV_META[ev.type];
+                toast(meta.msg(ev), meta.color);
+                log(`${p.name} 触发事件：${meta.label(ev)}`, pi);
+                sfxEvent(meta.good);
+                await sleep(1150);
+
+                if (ev.type === 'advance') {
+                    await moveBy(pi, ev.amount);
+                }
+                else if (ev.type === 'back') {
+                    await moveBy(pi, -ev.amount);
+                }
+                else if (ev.type === 'skip') {
+                    p.skipNext = true;
+                    renderPlayers();
+                }
+                else if (ev.type === 'again') {
+                    p.again = true;
+                    renderPlayers();
+                }
+
+                if (ev.type === 'advance' || ev.type === 'back')
+                    await applyEvents(pi, depth + 1);
+            }
+
+            /* ============ 回合流程 ============ */
+            async function playTurn() {
+                if (state.busy || state.over || !state.mode) return;
+                state.busy = true;
+                updateTurnUI();
+                const pi = state.cur, p = players[pi];
+
+                if (p.skipNext) {
+                    p.skipNext = false;
+                    renderPlayers();
+                    toast(`${p.name} 停一轮`, '#a58be0');
+                    log(`${p.name} 被事件格困住，暂停一轮`, pi);
+                    sfxEvent(false);
+                    await sleep(1100);
+                    state.busy = false;
+                    endTurn();
+
+                    return;
+                }
+
+                const value = await rollDiceAnim();
+                state.round++;
+                log(`第 ${state.round} 回合：${p.name} 掷出 ${value} 点`, pi);
+                await sleep(300);
+                await moveBy(pi, value);
+                await applyEvents(pi, 0);
+
+                if (p.pos === GOAL) {
+                    state.busy = false;
+                    win(pi);
+                    return;
+                }
+
+                state.busy = false;
+                endTurn();
+            }
+
+            function endTurn() {
+                const p     = players[state.cur];
+                const extra = p.again;
+                p.again = false;
+
+                if (!extra)
+                    state.cur = 1 - state.cur;
+
+                renderPlayers();
+                updateTurnUI();
+
+                if (state.over)
+                    return;
+
+                if (state.mode === 'pve' && state.cur === 1) {
+                    aiTimer = setTimeout(playTurn, 1000);
+                }
+            }
+
+            function win(pi) {
+                state.over = true;
+                const p = players[pi];
+                log(`${p.name} 恰好抵达终点，获胜！`, pi);
+
+                renderPlayers();
+                updateTurnUI();
+                sfxWin();
+                spawnConfetti();
+                $('#winTitle').textContent = `${p.name} 获胜！`;
+                $('#winSub').textContent = `共 ${state.round} 个回合，${p.name} 恰好到达第 ${GOAL} 格。`;
+
+                setTimeout(() => $('#overlayWin').classList.remove('hidden'), 900);
+            }
+
+            function spawnConfetti() {
+                const box = $('#confetti');
+                box.innerHTML = '';
+
+                for (let i = 0; i < 90; i++) {
+                    const s                   = document.createElement('i');
+                    s.style.left              = Math.random() * 100 + '%';
+                    s.style.background        = `hsl(${Math.floor(Math.random() * 360)}, 90%, 60%)`;
+                    s.style.animationDuration = (2.2 + Math.random() * 1.6) + 's';
+                    s.style.animationDelay    = (Math.random() * 0.8) + 's';
+                    box.appendChild(s);
+                }
+
+                setTimeout(() => {
+                    box.innerHTML = '';
+                }, 5200);
+            }
+
+            /* ============ 开始 / 重开 ============ */
+            function startGame(mode) {
+                clearTimeout(aiTimer);
+                state.mode = mode;
+                state.cur = 0;
+                state.busy = false;
+                state.over = false;
+                state.round = 0;
+                const names = mode === 'pve' ? ['你', '电脑'] : ['玩家1', '玩家2'];
+                players = names.map(n => ({
+                    name     : n,
+                    pos      : 0,
+                    skipNext : false,
+                    again    : false,
+                    color    : '#fff'
+                }));
+                players[0].color = '#ff6b6b';
+                players[1].color = '#4dabf7';
+                $('#p0name').textContent = names[0];
+                $('#p1name').textContent = names[1];
+                logEl.innerHTML = '';
+
+                buildBoard();
+                setDiceFace(1 + Math.floor(Math.random() * 6));
+                renderPlayers();
+                updateTurnUI();
+                $('#overlayStart').classList.add('hidden');
+                $('#overlayWin').classList.add('hidden');
+
+                log(`新对局开始（${mode === 'pve' ? '人机' : '双人'}模式），事件格已随机布置`);
+            }
+
+            /* ============ 事件绑定 ============ */
+            diceEl.innerHTML = Array.from({ length: 9 }, () => '<span class="pip"></span>').join('');
+            setDiceFace(6);
+
+            document.querySelectorAll('#overlayStart [data-mode]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    ac();
+                    startGame(btn.dataset.mode);
+                });
+            });
+
+            rollBtn.addEventListener('click', () => {
+                ac();
+                playTurn();
+            });
+
+            $('#restartBtn').addEventListener('click', () => {
+                if (!state.mode || state.busy)
+                    return;
+
+                startGame(state.mode);
+            });
+
+            $('#againBtn').addEventListener('click', () => startGame(state.mode));
+            $('#menuBtn').addEventListener('click', () => {
+                $('#overlayWin').classList.add('hidden');
+                $('#overlayStart').classList.remove('hidden');
+                state.mode = null;
+                state.over = false;
+                updateTurnUI();
+            });
+
+            $('#sndBtn').addEventListener('click', () => {
+                muted = !muted;
+                $('#sndBtn').textContent = `音效：${muted ? '关' : '开'}`;
+            });
+
+            window.addEventListener('resize', () => players.forEach((_, i) => positionPiece(i)));
+        })();
+    </script>
+</body>
+
+</html>
