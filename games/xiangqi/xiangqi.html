@@ -1,0 +1,2752 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>中国象棋 · Xiangqi</title>
+    <style>
+        :root {
+            --panel: #1b212b;
+            --panel2: #232b37;
+            --line: #2f3947;
+            --text: #e8ecf2;
+            --muted: #93a1b5;
+            --gold: #d8b26a;
+            --red: #d2453c;
+            --green: #5fb27a;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text);
+            background: radial-gradient(1200px 620px at 50% -12%, #1f2836, #0c0f14 62%);
+            font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+        }
+
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 16px 18px 34px
+        }
+
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0;
+            letter-spacing: 5px;
+            font-weight: 600
+        }
+
+        h1 small {
+            color: var(--muted);
+            font-size: 12px;
+            letter-spacing: 1px;
+            margin-left: 8px;
+            font-weight: 400
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center
+        }
+
+        .controls label {
+            font-size: 12px;
+            color: var(--muted);
+            display: flex;
+            gap: 6px;
+            align-items: center
+        }
+
+        select,
+        button {
+            background: var(--panel2);
+            color: var(--text);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 7px 11px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        select:focus,
+        button:focus {
+            outline: 1px solid var(--gold)
+        }
+
+        button:hover {
+            border-color: var(--gold);
+            color: var(--gold)
+        }
+
+        button.primary {
+            background: linear-gradient(180deg, #d8b26a, #b3853c);
+            color: #251d0c;
+            border-color: #b3853c;
+            font-weight: 700
+        }
+
+        button.primary:hover {
+            color: #251d0c;
+            filter: brightness(1.06)
+        }
+
+        button[disabled] {
+            opacity: .45;
+            cursor: not-allowed
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: minmax(320px, 1fr) 330px;
+            gap: 18px;
+            align-items: start
+        }
+
+        @media (max-width:920px) {
+            main {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .board-wrap {
+            position: relative;
+            display: flex;
+            justify-content: center
+        }
+
+        canvas {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 20px 44px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .05);
+            touch-action: none;
+            cursor: pointer;
+            display: block;
+        }
+
+        .banner {
+            position: absolute;
+            left: 50%;
+            top: 44%;
+            transform: translate(-50%, -50%);
+            background: rgba(12, 15, 20, .9);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 12px 22px;
+            border-radius: 10px;
+            font-size: 17px;
+            letter-spacing: 2px;
+            white-space: nowrap;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, .6);
+            pointer-events: none;
+        }
+
+        .hidden {
+            display: none !important
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px 14px
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex: none;
+            border: 1px solid rgba(0, 0, 0, .4)
+        }
+
+        .dot.red {
+            background: #e0554a
+        }
+
+        .dot.black {
+            background: #46566b
+        }
+
+        .turn {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 1px
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 6px;
+            line-height: 1.7
+        }
+
+        .cap-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            font-size: 15px;
+            line-height: 1.5
+        }
+
+        .cap-label {
+            color: var(--muted);
+            font-size: 12px;
+            flex: none;
+            padding-top: 3px
+        }
+
+        .cap-list {
+            min-height: 24px;
+            font-weight: 600;
+            letter-spacing: 1px
+        }
+
+        .cap-list .r {
+            color: #e4695e
+        }
+
+        .cap-list .b {
+            color: #cfe0f5
+        }
+
+        .moves-head {
+            color: var(--muted);
+            font-size: 12px;
+            letter-spacing: 2px;
+            margin-bottom: 8px
+        }
+
+        .move-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            max-height: 330px;
+            overflow-y: auto;
+            font-size: 13px
+        }
+
+        .move-list li {
+            display: flex;
+            gap: 8px;
+            padding: 5px 6px;
+            border-radius: 6px
+        }
+
+        .move-list li:nth-child(odd) {
+            background: rgba(255, 255, 255, .03)
+        }
+
+        .move-list .no {
+            color: var(--muted);
+            width: 34px;
+            flex: none;
+            text-align: right
+        }
+
+        .move-list .mv {
+            flex: 1;
+            font-weight: 600;
+            letter-spacing: 1px
+        }
+
+        .move-list .mv .b {
+            color: #a8c4e6
+        }
+
+        .moves-card footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(6, 9, 13, .72);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 50
+        }
+
+        .modal .box {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            max-width: 620px;
+            width: 100%;
+            padding: 20px 24px;
+            max-height: 84vh;
+            overflow: auto
+        }
+
+        .modal h2 {
+            margin: 0 0 12px;
+            font-size: 17px;
+            letter-spacing: 2px
+        }
+
+        .modal h3 {
+            font-size: 14px;
+            color: var(--gold);
+            margin: 16px 0 6px;
+            letter-spacing: 1px
+        }
+
+        .modal p,
+        .modal li {
+            font-size: 13.5px;
+            line-height: 1.85;
+            color: #cbd5e2
+        }
+
+        .modal ul {
+            margin: 0;
+            padding-left: 20px
+        }
+
+        .modal .close {
+            margin-top: 16px
+        }
+
+        kbd {
+            background: #0e1218;
+            border: 1px solid var(--line);
+            border-bottom-width: 2px;
+            border-radius: 5px;
+            padding: 1px 6px;
+            font-size: 12px;
+            font-family: inherit
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <header>
+            <h1>中国象棋<small>XIANGQI · 中國象棋</small></h1>
+            <div class="controls">
+                <label>模式 <select id="mode">
+                        <option value="ai">人机对战</option>
+                        <option value="pvp">双人对战</option>
+                    </select></label>
+                <label>难度 <select id="level">
+                        <option value="1">初级</option>
+                        <option value="2" selected>中级</option>
+                        <option value="3">高级</option>
+                        <option value="4">大师</option>
+                    </select></label>
+                <label>执子 <select id="side">
+                        <option value="red" selected>我执红</option>
+                        <option value="black">我执黑</option>
+                        <option value="random">随机</option>
+                    </select></label>
+                <button id="btnNew" class="primary">新局</button>
+                <button id="btnUndo">悔棋</button>
+                <button id="btnFlip">翻转</button>
+                <button id="btnSound">音效 开</button>
+                <button id="btnResign">认输</button>
+                <button id="btnRules">规则</button>
+            </div>
+        </header>
+
+        <main>
+            <section class="board-wrap">
+                <canvas id="board" width="560" height="620"></canvas>
+                <div id="banner" class="banner hidden"></div>
+            </section>
+
+            <aside class="panel">
+                <div class="card">
+                    <div class="status-row">
+                        <span class="dot" id="turnDot"></span>
+                        <span class="turn" id="turnInfo">红方走棋</span>
+                    </div>
+                    <div class="sub" id="statusInfo">点击己方棋子选中，再点击目标位置走子。</div>
+                </div>
+                <div class="card">
+                    <div class="cap-row">
+                        <span class="cap-label">被吃<br>棋子</span>
+                        <span class="cap-list" id="captured"></span>
+                    </div>
+                </div>
+                <div class="card moves-card">
+                    <div class="moves-head">棋谱</div>
+                    <ol id="moveList" class="move-list"></ol>
+                    <footer>
+                        <span class="hint" id="moveCount">共 0 手</span>
+                        <button id="btnCopy">复制棋谱</button>
+                    </footer>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <div id="modal" class="modal hidden">
+        <div class="box">
+            <h2>中国象棋规则速览</h2>
+            <h3>走子</h3>
+            <ul>
+                <li><b>帅/将</b>：九宫内每次走一格（上下左右），不可出九宫。</li>
+                <li><b>仕/士</b>：九宫内斜走一格。</li>
+                <li><b>相/象</b>：斜走两格，不可过河，"塞象眼"时不可走（田字中心有子）。</li>
+                <li><b>马</b>：走日字，"蹩马腿"时不可走（相邻的正方向有子）。</li>
+                <li><b>车</b>：直线任意格，不可越子。</li>
+                <li><b>炮</b>：不吃子时走法同车；吃子须隔一个棋子（炮架）。</li>
+                <li><b>兵/卒</b>：每次向前一格，过河后可左右横走一格（横走亦可吃子），永不能后退。</li>
+            </ul>
+            <h3>胜负</h3>
+            <ul>
+                <li>白脸将：双方将帅不可在同一直线上直接照面（"对面笑"为负）。</li>
+                <li>将死或困毙（无棋可走）判负。</li>
+                <li>可以直接吃掉对方老将（马、车、炮、兵均可），吃掉即判获胜。</li>
+                <li>同一局面重复三次、或自然限着（60 回合无吃子）判和。</li>
+            </ul>
+            <h3>操作</h3>
+            <ul>
+                <li>点击己方棋子选中，再点击高亮位置落子；也可直接拖动棋子。</li>
+                <li>键盘：<kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 移动光标，<kbd>Enter</kbd> 选中/落子，<kbd>Esc</kbd>
+                    取消，<kbd>U</kbd> 悔棋，<kbd>F</kbd> 翻转。</li>
+            </ul>
+            <button class="close" id="btnCloseModal">知道了</button>
+        </div>
+    </div>
+
+    <script>
+        'use strict';
+        /* ===================== 常量与棋盘基础 ===================== */
+        const RED = 0, BLACK = 1;
+        const EMPTY = 0;
+        const T_K = 1, T_A = 2, T_E = 3, T_H = 4, T_R = 5, T_C = 6, T_P = 7;
+
+        function typeOf(p) {
+            return p % 10;
+        }
+
+        function colorOf(p) {
+            return (p >= 10) ? BLACK : RED;
+        }
+
+        function mkPiece(t, c) {
+            return ((c === RED) ? t : (t + 10));
+        }
+
+        function ROW(i) {
+            return (i / 9) | 0;
+        }
+
+        function COL(i) {
+            return i % 9;
+        }
+
+        function IDX(r, c) {
+            return r * 9 + c;
+        }
+
+        function onBoard(r, c) {
+            return r >= 0 && r < 10 && c >= 0 && c < 9;
+        }
+
+        const NAMES = {
+            1: ['帅', '将'],
+            2: ['仕', '士'],
+            3: ['相', '象'],
+            4: ['马', '马'],
+            5: ['车', '车'],
+            6: ['炮', '炮'],
+            7: ['兵', '卒']
+        };
+
+        const pieceName = p => NAMES[typeOf(p)][colorOf(p)];
+
+        function inPalace(r, c, side) {
+            return ((c >= 3) && (c <= 5) && ((side === RED) ? (r >= 7 && r <= 9) : (r >= 0 && r <= 2)));
+        }
+
+        function ownHalf(r, c, side) {
+            return ((side === RED) ? (r >= 5) : (r <= 4));
+        }
+
+        function crossedRiver(r, side) {
+            return ((side === RED) ? (r <= 4) : (r >= 5));
+        }
+
+        const DIRS_ORTHO  = [
+            [-1, 0], [1, 0], [0, -1], [0, 1]
+        ];
+
+        const DIRS_DIAG   = [
+            [-1, -1], [-1, 1], [1, -1], [1, 1]
+        ];
+
+        const HORSE_STEPS = [
+            [-2, -1, -1, 0], [-2, 1, -1, 0], [2, -1, 1, 0], [2, 1, 1, 0],
+            [-1, -2, 0, -1], [1, -2, 0, -1], [-1, 2, 0, 1], [1, 2, 0, 1]
+        ];
+
+        /* ===================== 初始局面 ===================== */
+        function initialBoard() {
+            const b = new Int8Array(90);
+            const back = [T_R, T_H, T_E, T_A, T_K, T_A, T_E, T_H, T_R];
+            for (let c = 0; c < 9; c++) {
+                b[IDX(0, c)] = mkPiece(back[c], BLACK);
+                b[IDX(9, c)] = mkPiece(back[c], RED);
+            }
+
+            b[IDX(2, 1)] = mkPiece(T_C, BLACK);
+            b[IDX(2, 7)] = mkPiece(T_C, BLACK);
+            b[IDX(7, 1)] = mkPiece(T_C, RED);
+            b[IDX(7, 7)] = mkPiece(T_C, RED);
+
+            for (const c of [0, 2, 4, 6, 8]) {
+                b[IDX(3, c)] = mkPiece(T_P, BLACK);
+                b[IDX(6, c)] = mkPiece(T_P, RED);
+            }
+
+            return b;
+        }
+
+        /* ===================== 攻击判定 ===================== */
+        function kingSquare(b, side) {
+            const k = mkPiece(T_K, side);
+            for (let i = 0; i < 90; i++)
+                if (b[i] === k)
+                    return i;
+
+            return -1;
+        }
+
+        const HORSE_FROM = [
+            [-2, -1], [-2, 1], [2, -1], [2, 1],
+            [-1, -2], [-1, 2], [1, -2], [1, 2]
+        ];
+
+        function isAttacked(b, r, c, bySide) {
+            for (const [dr, dc] of DIRS_ORTHO) {
+                let rr = r + dr, cc = c + dc, seen = 0;
+                while (onBoard(rr, cc)) {
+                    const p = b[IDX(rr, cc)];
+                    if (p) {
+                        seen++;
+                        if (seen === 1) {
+                            if ((typeOf(p) === T_R) && (colorOf(p) === bySide))
+                                return true;
+                        } else {
+                            if ((seen === 2) && (typeOf(p) === T_C) && (colorOf(p) === bySide))
+                                return true;
+                            break;
+                        }
+                    }
+
+                    rr += dr;
+                    cc += dc;
+                }
+            }
+
+            for (const [dr, dc] of HORSE_FROM) {
+                const hr = r + dr, hc = c + dc;
+                if (!onBoard(hr, hc))
+                    continue;
+
+                const p = b[IDX(hr, hc)];
+
+                if (!p || typeOf(p) !== T_H || colorOf(p) !== bySide)
+                    continue;
+
+                // 马腿在马与目标之间（马朝向目标走一步）
+                const lr = (Math.abs(dr) === 2) ? (hr - dr / 2) : hr;
+                const lc = (Math.abs(dc) === 2) ? (hc - dc / 2) : hc;
+
+                if (b[IDX(lr, lc)] === EMPTY)
+                    return true;
+            }
+
+            // 兵/卒：红兵向上走（行号减小），黑卒向下走（行号增大）
+            const pr = (bySide === RED) ? (r + 1) : (r - 1);
+            if (onBoard(pr, c)) {
+                const p = b[IDX(pr, c)];
+
+                if (p && (typeOf(p) === T_P) && (colorOf(p) === bySide))
+                    return true;
+            }
+
+            // 过河后兵/卒可横吃
+            if (crossedRiver(r, bySide)) {
+                for (const dc of [-1, 1]) {
+                    const pc = c + dc;
+                    if (!onBoard(r, pc))
+                        continue;
+
+                    const p = b[IDX(r, pc)];
+
+                    if (p && (typeOf(p) === T_P) && (colorOf(p) === bySide))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        function inCheck(b, side) {
+            const ks = kingSquare(b, side);
+            if (ks < 0)
+                return false;
+
+            return isAttacked(b, ROW(ks), COL(ks), (side === RED) ? BLACK : RED);
+        }
+
+        /* 白脸将：两将同列且中间无子 */
+        function kingsFace(b) {
+            const rk = kingSquare(b, RED), bk = kingSquare(b, BLACK);
+            if (rk < 0 || bk < 0)
+                return false;
+
+            const rc = COL(rk), bc = COL(bk);
+
+            if (rc !== bc)
+                return false;
+
+            const r1 = ROW(rk), r2 = ROW(bk);
+            for (let r = Math.min(r1, r2) + 1; r < Math.max(r1, r2); r++) {
+                if (b[IDX(r, rc)] !== EMPTY)
+                    return false;
+            }
+
+            return true;
+        }
+
+        function applyMove(b, m) {
+            b[m.to]   = m.piece;
+            b[m.from] = EMPTY;
+        }
+
+        function undoMove(b, m) {
+            b[m.from] = m.piece;
+            b[m.to]   = m.captured;
+        }
+
+        function posKey(board, side) {
+            let s = String.fromCharCode(48 + side);
+            for (let i = 0; i < 90; i++)
+                s += String.fromCharCode(97 + board[i]);
+
+            return s;
+        }
+
+        /* ===================== 走法生成 ===================== */
+        function genMoves(b, side, capturesOnly, allowKing) {
+            const moves = [];
+            const push = (from, to) => {
+                const cap = b[to];
+                if (capturesOnly && (cap === EMPTY))
+                    return;
+
+                if ((cap !== EMPTY) && (colorOf(cap) === side))
+                    return; // 不可吃己方棋子
+
+                // 将不可被吃（allowKing 时允许吃将，但将帅之间不互相吃）
+                if ((cap !== EMPTY) && (typeOf(cap) === T_K) && !(allowKing && typeOf(b[from]) !== T_K))
+                    return;
+
+                moves.push({ from, to, piece: b[from], captured: cap });
+            };
+
+            for (let r = 0; r < 10; r++) {
+                for (let c = 0; c < 9; c++) {
+                    const from = IDX(r, c), p = b[from];
+                    if ((p === EMPTY) || (colorOf(p) !== side))
+                        continue;
+
+                    switch (typeOf(p)) {
+                        case T_K:
+                            for (const [dr, dc] of DIRS_ORTHO) {
+                                const nr = r + dr, nc = c + dc;
+                                if (inPalace(nr, nc, side))
+                                    push(from, IDX(nr, nc));
+                            }
+
+                            break;
+
+                        case T_A:
+                            for (const [dr, dc] of DIRS_DIAG) {
+                                const nr = r + dr, nc = c + dc;
+                                if (inPalace(nr, nc, side))
+                                    push(from, IDX(nr, nc));
+                            }
+
+                            break;
+
+                        case T_E:
+                            for (const [dr, dc] of DIRS_DIAG) {
+                                const nr = r + 2 * dr, nc = c + 2 * dc;
+                                if (!onBoard(nr, nc) || !ownHalf(nr, nc, side))
+                                    continue;
+
+                                if (b[IDX(r + dr, c + dc)] !== EMPTY)
+                                    continue; // 塞象眼
+
+                                push(from, IDX(nr, nc));
+                            }
+
+                            break;
+
+                        case T_H:
+                            for (const [dr, dc, lr, lc] of HORSE_STEPS) {
+                                const nr = r + dr, nc = c + dc;
+                                if (!onBoard(nr, nc))
+                                    continue;
+
+                                if (b[IDX(r + lr, c + lc)] !== EMPTY)
+                                    continue; // 蹩马腿
+
+                                push(from, IDX(nr, nc));
+                            }
+
+                            break;
+
+                        case T_R:
+                            for (const [dr, dc] of DIRS_ORTHO) {
+                                let nr = r + dr, nc = c + dc;
+                                while (onBoard(nr, nc)) {
+                                    const to = IDX(nr, nc);
+                                    if (b[to] === EMPTY)
+                                        push(from, to);
+                                    else {
+                                        if (colorOf(b[to]) !== side) {
+                                            push(from, to);
+                                            break;
+                                        }
+                                    }
+
+                                    nr += dr;
+                                    nc += dc;
+                                }
+                            }
+
+                            break;
+
+                        case T_C:
+                            for (const [dr, dc] of DIRS_ORTHO) {
+                                let nr = r + dr, nc = c + dc, jumped = false;
+                                while (onBoard(nr, nc)) {
+                                    const to = IDX(nr, nc);
+                                    if (!jumped) {
+                                        if (b[to] === EMPTY)
+                                            push(from, to);
+                                        else
+                                            jumped = true;
+                                    } else if (b[to] !== EMPTY) {
+                                        if (colorOf(b[to]) !== side)
+                                            push(from, to);
+                                        break;
+                                    }
+
+                                    nr += dr;
+                                    nc += dc;
+                                }
+                            }
+
+                            break;
+
+                        case T_P: {
+                            const nr = r + ((side === RED) ? -1 : 1);
+                            if (onBoard(nr, c))
+                                push(from, IDX(nr, c));
+
+                            if (crossedRiver(r, side)) { // 横走（可吃子）
+                                if (onBoard(r, c - 1))
+                                    push(from, IDX(r, c - 1));
+
+                                if (onBoard(r, c + 1))
+                                    push(from, IDX(r, c + 1));
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return moves;
+        }
+
+        function legalMoves(b, side) {
+            const out = [];
+            for (const m of genMoves(b, side)) {
+                applyMove(b, m);
+                const ok = !inCheck(b, side) && !kingsFace(b);
+                undoMove(b, m);
+
+                if (ok)
+                    out.push(m);
+            }
+
+            return out;
+        }
+
+        /* ===================== 局面评估 ===================== */
+        const VALUE = {
+            1: 60000,
+            2: 200,
+            3: 200,
+            4: 440,
+            5: 900,
+            6: 450,
+            7: 100
+        };
+
+        const MATE        = 1000000;
+        const MATE_IN_MAX = MATE - 1000;
+        const INF         = 3000000;
+        const MAX_PLY     = 96;
+        const MAX_HIST    = 1 << 17;
+
+        /* 位置价值表均以红方视角书写，黑方按行镜像 */
+        const PST_PAWN = [
+            0,  0,  0,  0,  0,   0,  0,  0,  0,
+            90, 90, 90, 96, 100, 96, 90, 90, 90,
+            30, 30, 40, 50, 58,  50, 40, 30, 30,
+            18, 20, 26, 34, 40,  34, 26, 20, 18,
+            10, 12, 16, 22, 28,  22, 16, 12, 10,
+            6,  8,  10, 14, 18,  14, 10, 8,  6,
+            2,  2,  4,  6,  10,  6,  4,  2,  2,
+            0,  0,  2,  4,  6,   4,  2,  0,  0,
+            0,  0,  0,  0,  2,   0,  0,  0,  0,
+            0,  0,  0,  0,  0,   0,  0,  0,  0
+        ];
+
+        const PST_HORSE = [
+            0,  0,  0,  0,  0,  0,  0,  0,  0,
+            0,  6,  10, 14, 14, 14, 10, 6,  0,
+            6,  12, 18, 22, 24, 22, 18, 12, 6,
+            10, 16, 24, 30, 32, 30, 24, 16, 10,
+            10, 18, 26, 32, 34, 32, 26, 18, 10,
+            8,  16, 22, 28, 30, 28, 22, 16, 8,
+            6,  12, 18, 22, 24, 22, 18, 12, 6,
+            4,  8,  12, 16, 18, 16, 12, 8,  4,
+            2,  4,  6,  8,  10, 8,  6,  4,  2,
+            0,  0,  2,  4,  4,  4,  2,  0,  0
+        ];
+
+        const PST_ROOK = [
+            8, 10, 12, 14, 16, 14, 12, 10, 8,
+            8, 10, 12, 14, 16, 14, 12, 10, 8,
+            4, 6,  8,  12, 14, 12, 8,  6,  4,
+            4, 6,  8,  12, 14, 12, 8,  6,  4,
+            2, 4,  6,  10, 12, 10, 6,  4,  2,
+            2, 4,  6,  10, 12, 10, 6,  4,  2,
+            2, 4,  6,  10, 12, 10, 6,  4,  2,
+            6, 8,  10, 14, 16, 14, 10, 8,  6,
+            8, 10, 12, 16, 18, 16, 12, 10, 8,
+            0, 2,  4,  8,  10, 8,  4,  2,  0
+        ];
+
+        const PST_CANNON = [
+            0, 2, 4, 4, 4,  4, 4, 2, 0,
+            0, 2, 4, 6, 6,  6, 4, 2, 0,
+            0, 2, 4, 6, 8,  6, 4, 2, 0,
+            2, 4, 6, 8, 10, 8, 6, 4, 2,
+            2, 4, 6, 8, 10, 8, 6, 4, 2,
+            2, 4, 6, 8, 10, 8, 6, 4, 2,
+            0, 2, 4, 6, 8,  6, 4, 2, 0,
+            0, 2, 4, 6, 6,  6, 4, 2, 0,
+            0, 2, 4, 4, 6,  4, 4, 2, 0,
+            0, 0, 2, 4, 4,  4, 2, 0, 0
+        ];
+
+        const PST_ADVISOR = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 6, 0, 6, 0, 0, 0,
+            0, 0, 0, 0, 8, 0, 0, 0, 0,
+            0, 0, 0, 4, 0, 4, 0, 0, 0
+        ];
+
+        const PST_ELEPHANT = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 3, 0, 0, 0, 3, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            4, 0, 0, 0, 6, 0, 0, 0, 4,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 4, 0, 0, 0, 4, 0, 0
+        ];
+
+        const PST_KING = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 2, 0, 2, 0, 0, 0,
+            0, 0, 0, 0, 4, 0, 0, 0, 0,
+            0, 0, 0, 6, 2, 6, 0, 0, 0
+        ];
+
+        function mirrorSq(i, side) {
+            return (side === RED) ? i : ((9 - ROW(i)) * 9 + COL(i));
+        }
+
+        function pstOf(t, sq) {
+            switch (t) {
+                case T_K: return PST_KING[sq];
+                case T_A: return PST_ADVISOR[sq];
+                case T_E: return PST_ELEPHANT[sq];
+                case T_H: return PST_HORSE[sq];
+                case T_R: return PST_ROOK[sq];
+                case T_C: return PST_CANNON[sq];
+                case T_P: return PST_PAWN[sq];
+            }
+
+            return 0;
+        }
+
+        /* 车在无己方兵卒的纵线（半通/全通）加分 */
+        function rookFileBonus(board, col, side) {
+            let ownPawn = false, anyPawn = false;
+            for (let r = 0; r < 10; r++) {
+                const p = board[IDX(r, col)];
+                if (p && (typeOf(p) === T_P)) {
+                    if (colorOf(p) === side) {
+                        ownPawn = true;
+                        break;
+                    }
+
+                    anyPawn = true;
+                }
+            }
+
+            if (ownPawn)
+                return 0;
+
+            return anyPawn ? 6 : 12;
+        }
+
+        function pieceValue(board, i) {
+            const p  = board[i];
+            const t  = typeOf(p), c = colorOf(p);
+            const cc = COL(i);
+            let v    = VALUE[t] + pstOf(t, mirrorSq(i, c));
+
+            if (t === T_R)
+                v += rookFileBonus(board, cc, c);
+            else if ((t === T_C) && (cc === 4))
+                v += 8;   // 中炮
+
+            return v;
+        }
+
+        /* 将帅受攻程度：车炮直线威胁 + 马兵逼近 + 士象残缺 */
+        function kingDanger(board, side, shield, ks) {
+            if ((ks === undefined) || ks < 0)
+                ks = kingSquare(board, side);
+
+            if (ks < 0)
+                return 0;
+
+            const kr = ROW(ks), kc = COL(ks);
+            const foe = (side === RED) ? BLACK : RED;
+            let d = 0;
+            for (const [dr, dc] of DIRS_ORTHO) {
+                let rr = kr + dr, cc = kc + dc, seen = 0;
+                while (onBoard(rr, cc)) {
+                    const p = board[IDX(rr, cc)];
+                    if (p) {
+                        seen++;
+                        if (seen === 1) {
+                            if ((colorOf(p) === foe) && (typeOf(p) === T_R)) {
+                                d += 22;
+                                break;
+                            }
+                        } else {
+                            if ((colorOf(p) === foe) && (typeOf(p) === T_C))
+                                d += 18;
+                            break;
+                        }
+                    }
+
+                    rr += dr;
+                    cc += dc;
+                }
+            }
+
+            for (let dr = -2; dr <= 2; dr++) {
+                for (let dc = -2; dc <= 2; dc++) {
+                    if ((dr === 0) && (dc === 0))
+                        continue;
+
+                    const r = kr + dr, c = kc + dc;
+                    if (!onBoard(r, c))
+                        continue;
+
+                    const p = board[IDX(r, c)];
+                    if (!p || colorOf(p) !== foe)
+                        continue;
+
+                    const t = typeOf(p);
+                    if (t === T_H)
+                        d += 7;
+                    else if ((t === T_P) && (Math.abs(dr) + Math.abs(dc) <= 2))
+                        d += 6;
+                }
+            }
+
+            d += Math.max(0, 4 - shield) * 4;
+
+            return d;
+        }
+
+        function evaluate(board, side, ctx) {
+            const ksR = ctx ? ctx.kingSq[RED]   : kingSquare(board, RED);
+            const ksB = ctx ? ctx.kingSq[BLACK] : kingSquare(board, BLACK);
+            let score = 0, redShield = 0, blackShield = 0;
+
+            for (let i = 0; i < 90; i++) {
+                const p = board[i];
+                if (!p)
+                    continue;
+
+                const t = typeOf(p);
+                const v = pieceValue(board, i);
+                if (colorOf(p) === RED) {
+                    score += v;
+                    if ((t === T_A) || (t === T_E))
+                        redShield++;
+                } else {
+                    score -= v;
+                    if ((t === T_A) || (t === T_E))
+                        blackShield++;
+                }
+            }
+
+            score += kingDanger(board, BLACK, blackShield, ksB) - kingDanger(board, RED, redShield, ksR);
+            let s = (side === RED) ? score : -score;
+
+            // 中级注入小幅固定噪声：模拟人类对局面的误判，幅度远小于子力价值，不会导致送子
+            if (ctx && ctx.weak)
+                s += (((ctx.h1 ^ ctx.h2) >>> 0) % 41) - 20;
+
+            return s;
+        }
+
+        /* ===================== 搜索（Negamax + Alpha-Beta + 置换表） ===================== */
+        /* Zobrist 散列：双 32 位，供置换表与重复局面判定使用 */
+        function buildZobrist() {
+            let s = 2463534242 >>> 0;
+
+            function rnd() {
+                s ^= s << 13;
+                s >>>= 0;
+                s ^= s >>> 17;
+                s ^= s << 5;
+                s >>>= 0;
+
+                return s;
+            }
+
+            const p1 = new Int32Array(16 * 90), p2 = new Int32Array(16 * 90);
+            for (let i = 0; i < p1.length; i++) {
+                p1[i] = rnd();
+                p2[i] = rnd();
+            }
+
+            const s1 = new Int32Array(2), s2 = new Int32Array(2);
+            s1[0] = rnd();
+            s1[1] = rnd();
+            s2[0] = rnd();
+            s2[1] = rnd();
+
+            return { p1, p2, s1, s2 };
+        }
+
+        const ZOBRIST  = buildZobrist();
+        const TT_SIZE  = 1 << 20, TT_MASK = TT_SIZE - 1;
+        const TT_KEY1  = new Int32Array(TT_SIZE), TT_KEY2 = new Int32Array(TT_SIZE);
+        const TT_MOVE  = new Int32Array(TT_SIZE), TT_SCORE = new Int32Array(TT_SIZE);
+        const TT_DEPTH = new Int8Array(TT_SIZE), TT_FLAG = new Int8Array(TT_SIZE);
+        const HIST     = new Int32Array(8100);
+
+        function hashBoard(board, side) {
+            let h1 = ZOBRIST.s1[side], h2 = ZOBRIST.s2[side];
+            for (let i = 0; i < 90; i++) {
+                const p = board[i];
+                if (!p)
+                    continue;
+
+                const code = (p >= 10) ? ((p - 10) * 2 + 1) : (p * 2);
+                h1 ^= ZOBRIST.p1[code * 90 + i];
+                h2 ^= ZOBRIST.p2[code * 90 + i];
+            }
+
+            return { h1, h2 };
+        }
+
+        /* 走法排序：置换表着法 > 吃子(MVV-LVA) > 杀手着法 > 历史启发 */
+        function orderMoves(moves, ttCode, killers, useHistory) {
+            const ttFrom = ttCode  ? (ttCode / 90) | 0 : -1;
+            const ttTo   = ttCode  ? ttCode % 90       : -1;
+            const k0     = killers ? killers[0] : -1, k1 = killers ? killers[1] : -1;
+
+            for (const m of moves) {
+                const code = m.from * 90 + m.to;
+                let s;
+
+                if ((m.from === ttFrom) && (m.to === ttTo))
+                    s = 1 << 24;
+                else if (m.captured)
+                    s = (1 << 20) + VALUE[typeOf(m.captured)] * 16 - VALUE[typeOf(m.piece)];
+                else if ((code === k0) || (code === k1))
+                    s = 1 << 18;
+                else
+                    s = (useHistory === false) ? 0 : HIST[code];
+
+                m.score = s;
+            }
+
+            moves.sort((a, b) => b.score - a.score);
+        }
+
+        function ttStore(ctx, depth, score, flag, code, ply) {
+            const idx = ctx.h1 & TT_MASK;
+            if ((TT_KEY1[idx] === ctx.h1) && (TT_KEY2[idx] === ctx.h2) && (TT_DEPTH[idx] > depth))
+                return;
+
+            let s = score;
+            if (s > MATE_IN_MAX)
+                s += ply;
+            else if (s < -MATE_IN_MAX)
+                s -= ply;
+
+            TT_KEY1[idx]  = ctx.h1;
+            TT_KEY2[idx]  = ctx.h2;
+            TT_MOVE[idx]  = code;
+            TT_SCORE[idx] = s;
+            TT_DEPTH[idx] = depth;
+            TT_FLAG[idx]  = flag;
+        }
+
+        function createSearchCtx(board, side, deadline, repKeys) {
+            const ctx = {
+                h1      : 0,
+                h2      : 0,
+                nodes   : 0,
+                stop    : false,
+                deadline,
+                weak    : false,
+                kingSq  : [kingSquare(board, RED), kingSquare(board, BLACK)],
+                majors  : [0, 0],
+                path1   : new Int32Array(MAX_PLY),
+                path2   : new Int32Array(MAX_PLY),
+                killers : new Array(MAX_PLY),
+                rep     : repKeys || []
+            };
+
+            let h1 = ZOBRIST.s1[side], h2 = ZOBRIST.s2[side];
+            for (let i = 0; i < 90; i++) {
+                const p = board[i];
+                if (!p)
+                    continue;
+
+                const code = (p >= 10) ? ((p - 10) * 2 + 1) : (p * 2);
+                h1 ^= ZOBRIST.p1[code * 90 + i];
+                h2 ^= ZOBRIST.p2[code * 90 + i];
+                const t = (p >= 10) ? (p - 10) : p;
+
+                if ((t === T_R) || (t === T_H) || (t === T_C))
+                    ctx.majors[(p >= 10) ? BLACK : RED]++;
+            }
+
+            ctx.h1 = h1;
+            ctx.h2 = h2;
+
+            return ctx;
+        }
+
+        function xqFlipSide(ctx) {
+            ctx.h1 ^= ZOBRIST.s1[0] ^ ZOBRIST.s1[1];
+            ctx.h2 ^= ZOBRIST.s2[0] ^ ZOBRIST.s2[1];
+        }
+
+        function xqMake(b, m, ctx) {
+            const p    = b[m.from], cap = b[m.to];
+            b[m.to]    = p;
+            b[m.from]  = EMPTY;
+            const side = (p >= 10) ? BLACK : RED;
+            const code = (p >= 10) ? (p - 10) * 2 + 1 : p * 2;
+            let h1     = ctx.h1 ^ ZOBRIST.p1[code * 90 + m.from] ^ ZOBRIST.p1[code * 90 + m.to];
+            let h2     = ctx.h2 ^ ZOBRIST.p2[code * 90 + m.from] ^ ZOBRIST.p2[code * 90 + m.to];
+
+            if (cap) {
+                const cc = (cap >= 10) ? ((cap - 10) * 2 + 1) : (cap * 2);
+                h1 ^= ZOBRIST.p1[cc * 90 + m.to];
+                h2 ^= ZOBRIST.p2[cc * 90 + m.to];
+                const ct = (cap >= 10) ? (cap - 10) : cap;
+
+                if ((ct === T_R) || (ct === T_H) || (ct === T_C))
+                    ctx.majors[1 - side]--;
+            }
+
+            h1 ^= ZOBRIST.s1[0] ^ ZOBRIST.s1[1];
+            h2 ^= ZOBRIST.s2[0] ^ ZOBRIST.s2[1];
+            ctx.h1 = h1;
+            ctx.h2 = h2;
+
+            if (typeOf(p) === T_K)
+                ctx.kingSq[side] = m.to;
+        }
+
+        function xqUnmake(b, m, ctx) {
+            const p    = b[m.to], cap = m.captured;
+            b[m.from]  = p;
+            b[m.to]    = cap;
+            const side = (p >= 10) ? BLACK : RED;
+            const code = (p >= 10) ? ((p - 10) * 2 + 1) : (p * 2);
+            let h1     = ctx.h1 ^ ZOBRIST.p1[code * 90 + m.from] ^ ZOBRIST.p1[code * 90 + m.to];
+            let h2     = ctx.h2 ^ ZOBRIST.p2[code * 90 + m.from] ^ ZOBRIST.p2[code * 90 + m.to];
+
+            if (cap) {
+                const cc = (cap >= 10) ? ((cap - 10) * 2 + 1) : (cap * 2);
+                h1 ^= ZOBRIST.p1[cc * 90 + m.to];
+                h2 ^= ZOBRIST.p2[cc * 90 + m.to];
+                const ct = (cap >= 10) ? (cap - 10) : cap;
+
+                if ((ct === T_R) || (ct === T_H) || (ct === T_C))
+                    ctx.majors[1 - side]++;
+            }
+
+            h1 ^= ZOBRIST.s1[0] ^ ZOBRIST.s1[1];
+            h2 ^= ZOBRIST.s2[0] ^ ZOBRIST.s2[1];
+            ctx.h1 = h1;
+            ctx.h2 = h2;
+
+            if (typeOf(p) === T_K)
+                ctx.kingSq[side] = m.from;
+        }
+
+        function xqInCheck(b, ctx, side) {
+            const ks = ctx.kingSq[side];
+            if (ks < 0)
+                return false;
+
+            return isAttacked(b, ROW(ks), COL(ks), (side === RED) ? BLACK : RED);
+        }
+
+        function xqKingsFace(b, ctx) {
+            const a = ctx.kingSq[RED], k = ctx.kingSq[BLACK];
+            if (a < 0 || k < 0)
+                return false;
+
+            const col = COL(a);
+            if (col !== COL(k))
+                return false;
+
+            const r1 = ROW(a), r2 = ROW(k);
+
+            for (let r = Math.min(r1, r2) + 1; r < Math.max(r1, r2); r++) {
+                if (b[IDX(r, col)] !== EMPTY)
+                    return false;
+            }
+
+            return true;
+        }
+
+        /* 静态搜索：只延伸吃子；被将军时搜索全部应将着法 */
+        function xqQuiesce(ctx, b, side, alpha, beta, ply) {
+            ctx.nodes++;
+            if (((ctx.nodes & 2047) === 0) && (Date.now() >= ctx.deadline))
+                ctx.stop = true;
+
+            if (ctx.stop)
+                return 0;
+
+            if (ply >= MAX_PLY - 4)
+                return evaluate(b, side, ctx);
+
+            const inChk = xqInCheck(b, ctx, side);
+            let stand = 0;
+            if (!inChk) {
+                stand = evaluate(b, side, ctx);
+                if (stand >= beta)
+                    return stand;
+
+                if (stand > alpha)
+                    alpha = stand;
+            }
+
+            const moves = genMoves(b, side, !inChk);
+            orderMoves(moves, 0, null);
+            let legal = 0;
+
+            for (const m of moves) {
+                if (!inChk && stand + VALUE[typeOf(m.captured)] + 180 < alpha)
+                    continue;
+
+                xqMake(b, m, ctx);
+                if (xqInCheck(b, ctx, side) || xqKingsFace(b, ctx)) {
+                    xqUnmake(b, m, ctx);
+                    continue;
+                }
+
+                legal++;
+                const s = -xqQuiesce(ctx, b, 1 - side, -beta, -alpha, ply + 1);
+                xqUnmake(b, m, ctx);
+
+                if (ctx.stop)
+                    return 0;
+
+                if (s >= beta)
+                    return s;
+
+                if (s > alpha)
+                    alpha = s;
+            }
+
+            if (inChk && !legal)
+                return -MATE + ply;
+
+            return alpha;
+        }
+
+        function xqSearch(ctx, b, side, depth, alpha, beta, ply, allowNull) {
+            ctx.nodes++;
+            if (((ctx.nodes & 2047) === 0) && (Date.now() >= ctx.deadline))
+                ctx.stop = true;
+
+            if (ctx.stop)
+                return 0;
+
+            if (ply >= MAX_PLY - 4)
+                return evaluate(b, side, ctx);
+
+            const inChk = xqInCheck(b, ctx, side);
+            if (inChk && ply < 48)
+                depth++;   // 被将军延伸
+
+            if (depth > MAX_PLY - 8)
+                depth = MAX_PLY - 8;
+
+            if (ply > 0) {
+                for (let i = 0; i < ply; i++) {
+                    if ((ctx.path1[i] === ctx.h1) && (ctx.path2[i] === ctx.h2))
+                        return 0;
+                }
+            }
+
+            const rep = ctx.rep;
+            for (let i = 0; i < rep.length; i++) {
+                if ((rep[i][0] === ctx.h1) && (rep[i][1] === ctx.h2))
+                    return 0;
+            }
+
+            ctx.path1[ply] = ctx.h1;
+            ctx.path2[ply] = ctx.h2;
+
+            const pvNode = beta - alpha > 1;
+            const idx = ctx.h1 & TT_MASK;
+            let ttCode = 0;
+            if ((TT_KEY1[idx] === ctx.h1) && (TT_KEY2[idx] === ctx.h2)) {
+                ttCode = TT_MOVE[idx];
+                if (TT_DEPTH[idx] >= depth) {
+                    let s = TT_SCORE[idx];
+                    if (s > MATE_IN_MAX)
+                        s -= ply;
+                    else if (s < -MATE_IN_MAX)
+                        s += ply;
+
+                    const fl = TT_FLAG[idx];
+
+                    if (fl === 1)
+                        return s;
+
+                    if (fl === 2 && s >= beta)
+                        return s;
+
+                    if (fl === 3 && s <= alpha)
+                        return s;
+                }
+            }
+
+            if (depth <= 0)
+                return xqQuiesce(ctx, b, side, alpha, beta, ply);
+
+            // 空着裁剪
+            if (allowNull && !inChk && !pvNode && depth >= 3 && ctx.majors[side] > 0 && beta < MATE_IN_MAX) {
+                const R = (depth >= 6) ? 3 : 2;
+                xqFlipSide(ctx);
+                const s = -xqSearch(ctx, b, 1 - side, depth - 1 - R, -beta, -beta + 1, ply + 1, false);
+                xqFlipSide(ctx);
+
+                if (ctx.stop)
+                    return 0;
+                if (s >= beta)
+                    return beta;
+            }
+
+            const moves = genMoves(b, side, false);
+            orderMoves(moves, ctx.weak ? 0 : ttCode, ctx.weak ? null : ctx.killers[ply], !ctx.weak);
+            const alpha0 = alpha;
+            let best = -INF, bestCode = 0, legal = 0;
+
+            for (let i = 0; i < moves.length; i++) {
+                const m = moves[i];
+                xqMake(b, m, ctx);
+                if (xqInCheck(b, ctx, side) || xqKingsFace(b, ctx)) {
+                    xqUnmake(b, m, ctx);
+                    continue;
+                }
+
+                legal++;
+                const nd = depth - 1;
+                let s;
+
+                if (legal === 1) {
+                    s = -xqSearch(ctx, b, 1 - side, nd, -beta, -alpha, ply + 1, true);
+                } else {
+                    let r = 0;
+                    if (!m.captured && m.score < (1 << 18) && depth >= 3 && legal > 3) {
+                        r = (legal > 8 && depth >= 5) ? 2 : 1;
+                    }
+
+                    s = -xqSearch(ctx, b, 1 - side, nd - r, -alpha - 1, -alpha, ply + 1, true);
+                    if (r > 0 && !ctx.stop && s > alpha) {
+                        s = -xqSearch(ctx, b, 1 - side, nd, -alpha - 1, -alpha, ply + 1, true);
+                    }
+
+                    if (!ctx.stop && s > alpha && s < beta) {
+                        s = -xqSearch(ctx, b, 1 - side, nd, -beta, -alpha, ply + 1, true);
+                    }
+                }
+
+                xqUnmake(b, m, ctx);
+
+                if (ctx.stop)
+                    return 0;
+
+                if (s > best) {
+                    best = s;
+                    bestCode = m.from * 90 + m.to;
+                }
+
+                if (s > alpha)
+                    alpha = s;
+
+                if (alpha >= beta) {
+                    if (!ctx.weak && !m.captured) {
+                        const code = m.from * 90 + m.to;
+                        let kl = ctx.killers[ply];
+
+                        if (!kl)
+                            kl = ctx.killers[ply] = [0, 0];
+
+                        if (kl[0] !== code) {
+                            kl[1] = kl[0];
+                            kl[0] = code;
+                        }
+
+                        const hv = HIST[code] + depth * depth;
+                        HIST[code] = (hv > MAX_HIST) ? MAX_HIST : hv;
+                    }
+                    break;
+                }
+            }
+
+            if (!legal)
+                return -MATE + ply;
+
+            const flag = (best <= alpha0) ? 3 : ((best >= beta) ? 2 : 1);
+            ttStore(ctx, depth, best, flag, bestCode, ply);
+
+            return best;
+        }
+
+        /* 主入口：迭代加深 + 时间控制 + 根节点 PVS */
+        function bestMove(board, side, level, repKeys) {
+            const budget   = (level === 1) ? 350 : ((level === 2) ? 700 : ((level === 3) ? 1500 : 3600));
+            const maxDepth = (level === 1) ? 3   : ((level === 2) ? 4   : ((level === 3) ? 7    : 12));
+            const start    = Date.now();
+            const ctx      = createSearchCtx(board, side, start + budget, repKeys || []);
+            ctx.weak       = (level === 2);
+            const opp      = 1 - side;
+
+            const rootMoves = [];
+            for (const m of genMoves(board, side, false)) {
+                xqMake(board, m, ctx);
+                const ok = !xqInCheck(board, ctx, side) && !xqKingsFace(board, ctx);
+                xqUnmake(board, m, ctx);
+                if (ok) {
+                    m.score = 0;
+                    rootMoves.push(m);
+                }
+            }
+
+            if (!rootMoves.length)
+                return null;
+
+            if (rootMoves.length === 1)
+                return rootMoves[0];
+
+            HIST.fill(0);
+            ctx.path1[0] = ctx.h1;
+            ctx.path2[0] = ctx.h2;
+
+            let best = rootMoves[0], bestScore = 0;
+            let aborted = false;
+
+            for (let depth = 1; depth <= maxDepth; depth++) {
+                ctx.stop = false;
+                if (Date.now() >= ctx.deadline)
+                    break;
+
+                rootMoves.sort((a, b) => b.score - a.score);
+                let alpha = -INF, iterBest = null, iterScore = -INF;
+                for (let i = 0; i < rootMoves.length; i++) {
+                    const m = rootMoves[i];
+                    xqMake(board, m, ctx);
+                    let s, exact = true;
+
+                    if (i === 0) {
+                        s = -xqSearch(ctx, board, opp, depth - 1, -INF, -alpha, 1, true);
+                    } else {
+                        s = -xqSearch(ctx, board, opp, depth - 1, -alpha - 1, -alpha, 1, true);
+                        if (!ctx.stop && s > alpha) {
+                            s = -xqSearch(ctx, board, opp, depth - 1, -INF, -alpha, 1, true);
+                        } else {
+                            exact = false;   // 零窗搜索未提高 alpha，分数只是上界
+                        }
+                    }
+
+                    xqUnmake(board, m, ctx);
+
+                    if (ctx.stop) {
+                        aborted = true;
+                        break;
+                    }
+
+                    m.score = s;
+                    m.bound = !exact;
+
+                    if (s > iterScore) {
+                        iterScore = s;
+                        iterBest = m;
+                    }
+
+                    if (s > alpha)
+                        alpha = s;
+                }
+
+                if (aborted)
+                    break;
+
+                if (iterBest) {
+                    best = iterBest;
+                    bestScore = iterScore;
+                }
+
+                if (bestScore > MATE_IN_MAX - 100)
+                    break;
+
+                const earlyStop = (level >= 3) ? 0.9 : 0.55;
+
+                if (Date.now() - start > budget * earlyStop)
+                    break;
+            }
+
+            // 初级/中级加入少量随机性，模拟人类偶尔的小失误
+            const jitter = (level === 1) ? 90 : ((level === 2) ? 35 : 0);
+            if (jitter > 0 && bestScore > -MATE_IN_MAX) {
+                const pool = rootMoves.filter(m => !m.bound && m.score >= bestScore - jitter);
+                if (pool.length > 1)
+                    best = pool[(Math.random() * pool.length) | 0];
+            }
+
+            return best;
+        }
+
+        /* ===================== 中文记谱 ===================== */
+        const CN_NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+        const fileNum = (col, side) => ((side === RED) ? (9 - col) : (col + 1));
+        const numText = (n, side) => ((side === RED) ? CN_NUM[n] : String(n));
+
+        function moveNotation(board, m, side) {
+            const t = typeOf(m.piece);
+            const fr = ROW(m.from), fc = COL(m.from), tr = ROW(m.to), tc = COL(m.to);
+            const ch = NAMES[t][side];
+
+            let prefix = '';
+            const same = [];
+            for (let r = 0; r < 10; r++) {
+                const p = board[IDX(r, fc)];
+                if (p && (typeOf(p) === t) && (colorOf(p) === side))
+                    same.push(r);
+            }
+
+            if (same.length >= 2) {
+                same.sort((a, b) => ((side === RED) ? (a - b) : (b - a)));
+                const idx = same.indexOf(fr);
+
+                if (same.length === 2)
+                    prefix = (idx === 0) ? '前' : '后';
+                else if (idx === 0)
+                    prefix = '前';
+                else if (idx === same.length - 1)
+                    prefix = '后';
+                else
+                    prefix = '中';
+            }
+
+            let action, target;
+            if (tr === fr) { // 同一横线：平
+                action = '平';
+                target = numText(fileNum(tc, side), side);
+            } else {
+                const forward = (side === RED) ? (tr < fr) : (tr > fr);
+                action = forward ? '进' : '退';
+                // 马相仕到达新的纵线，用目标纵线；车炮兵将纵线不变，用进退格数
+                target = ((t === T_H) || (t === T_E) || (t === T_A))
+                    ? numText(fileNum(tc, side), side)
+                    : numText(Math.abs(tr - fr), side);
+            }
+
+            return prefix ? (prefix + ch + action + target) : (ch + numText(fileNum(fc, side), side) + action + target);
+        }
+
+        /* ===================== 对局状态 ===================== */
+        const game = {
+            board: initialBoard(),
+            turn: RED,
+            history: [],
+            captured: [],
+            repCounts: {},
+            plySinceCapture: 0,
+            lastMove: null,
+            over: false,
+            result: '',
+            mode: 'ai',
+            level: 2,
+            humanSide: RED,
+            flip: false,
+            sound: true,
+            aiThinking: false,
+            selected: -1,
+            legal: [],
+            cursor: IDX(9, 4),
+            drag: null
+        };
+
+        function resetPosition() {
+            game.board = initialBoard();
+            game.turn = RED;
+            game.history = [];
+            game.captured = [];
+            game.repCounts = {};
+            game.plySinceCapture = 0;
+            game.lastMove = null;
+            game.over = false;
+            game.result = '';
+            game.selected = -1;
+            game.legal = [];
+            game.drag = null;
+            game.cursor = IDX(9, 4);
+            game.repCounts[posKey(game.board, RED)] = 1;
+        }
+
+        /* 可直接吃掉对方老将的走法（吃将即胜） */
+        function kingCaptureMoves(b, side) {
+            const out = [];
+            for (const m of genMoves(b, side, false, true)) {
+                if (!m.captured || typeOf(m.captured) !== T_K)
+                    continue;
+
+                applyMove(b, m);
+                const ok = !inCheck(b, side);
+                undoMove(b, m);
+
+                if (ok)
+                    out.push(m);
+            }
+
+            return out;
+        }
+
+        function legalFor(side) {
+            const base = legalMoves(game.board, side);
+            const caps = kingCaptureMoves(game.board, side);
+
+            return caps.length ? base.concat(caps) : base;
+        }
+
+        /* 轮到某方时若无棋可走：将被将死或困毙 */
+        function checkTerminal() {
+            if (game.over)
+                return;
+
+            if (legalFor(game.turn).length)
+                return;
+
+            game.over   = true;
+            game.result = (inCheck(game.board, game.turn) ? '将死' : '困毙') + '，' +
+                ((game.turn === RED) ? '黑方' : '红方') + '获胜';
+        }
+
+        function playMove(from, to) {
+            if (game.over)
+                return false;
+
+            const side  = game.turn;
+            const moves = legalFor(side);
+            const m     = moves.find(x => (x.from === from) && (x.to === to));
+
+            if (!m)
+                return false;
+
+            const note      = moveNotation(game.board, m, side);
+            const psc       = game.plySinceCapture;
+            const isKingCap = m.captured && (typeOf(m.captured) === T_K);
+            applyMove(game.board, m);
+
+            if (m.captured && !isKingCap) {
+                game.captured.push(m.captured);
+                game.plySinceCapture = 0;
+            }
+            else
+                game.plySinceCapture++;
+
+            game.turn           = (side === RED) ? BLACK : RED;
+            game.lastMove       = { from, to };
+            game.selected       = -1;
+            game.legal          = [];
+            const key           = posKey(game.board, game.turn);
+            game.repCounts[key] = (game.repCounts[key] || 0) + 1;
+            const hk            = hashBoard(game.board, game.turn);
+            game.history.push({ move: m, note, plySinceCapture: psc, key, z1: hk.h1, z2: hk.h2, kingCap: isKingCap });
+
+            const resp = legalFor(game.turn);
+            if (isKingCap) {
+                game.over   = true;
+                game.result = ((side === RED) ? '红方' : '黑方') + '吃掉对方老将获胜';
+            } else if (!resp.length) {
+                game.over   = true;
+                game.result = (inCheck(game.board, game.turn) ? '将死' : '困毙') + '，' +
+                    ((side === RED) ? '黑方' : '红方') + '获胜';
+            } else if (game.repCounts[key] >= 3) {
+                game.over   = true;
+                game.result = '同一局面出现三次，判和';
+            } else if (game.plySinceCapture >= 120) {
+                game.over   = true;
+                game.result = '自然限着（60 回合无吃子），判和';
+            }
+
+            updateAll();
+            playSound(m.captured ? 'capture' : 'move');
+            if (!game.over && (game.mode === 'ai') && (game.turn !== game.humanSide))
+                scheduleAI();
+
+            return true;
+        }
+
+        function undoLastMove() {
+            if (!game.history.length)
+                return;
+
+            const steps = ((game.mode === 'ai') && (game.history.length >= 2)) ? 2 : 1;
+
+            for (let i = 0; i < steps && game.history.length; i++) {
+                const h = game.history.pop();
+                undoMove(game.board, h.move);
+                if (h.move.captured && !h.kingCap)
+                    game.captured.pop();
+
+                game.plySinceCapture = h.plySinceCapture;
+                if (h.key && game.repCounts[h.key])
+                    game.repCounts[h.key]--;
+
+                game.turn = (game.turn === RED) ? BLACK : RED;
+            }
+
+            game.over     = false;
+            game.result   = '';
+            game.selected = -1;
+            game.legal    = [];
+            const last    = game.history[game.history.length - 1];
+            game.lastMove = last ? { from: last.move.from, to: last.move.to } : null;
+
+            checkTerminal();
+            updateAll();
+        }
+
+        /* ===================== 棋盘绘制 ===================== */
+        const CV_W = 560, CV_H = 620, CELL = 56, PAD_X = 56, PAD_Y = 58;
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
+
+        function viewPos(row, col) {
+            const vr = game.flip ? (9 - row) : row;
+            const vc = game.flip ? (8 - col) : col;
+
+            return { x: PAD_X + vc * CELL, y: PAD_Y + vr * CELL };
+        }
+
+        function squareAt(px, py) {
+            const vr = Math.round((py - PAD_Y) / CELL);
+            const vc = Math.round((px - PAD_X) / CELL);
+            if (vr < 0 || vr > 9 || vc < 0 || vc > 8)
+                return -1;
+
+            return IDX(game.flip ? (9 - vr) : vr, game.flip ? (8 - vc) : vc);
+        }
+
+        function pointAt(idx) {
+            if (idx < 0)
+                return { x: 0, y: 0 };
+
+            return viewPos(ROW(idx), COL(idx));
+        }
+
+        function drawWood() {
+            const g = ctx.createLinearGradient(0, 0, CV_W, CV_H);
+            g.addColorStop(0, '#e7c48f');
+            g.addColorStop(.5, '#dcb47b');
+            g.addColorStop(1, '#cf9f63');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, CV_W, CV_H);
+            ctx.save();
+            ctx.globalAlpha = .06;
+            ctx.strokeStyle = '#6b4423';
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i < 90; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * 7 + (i % 3));
+                ctx.bezierCurveTo(CV_W / 3, i * 7 + 8 + (i % 5), CV_W * 2 / 3, i * 7 - 6 + (i % 2), CV_W, i * 7 + 5);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+            ctx.strokeStyle = 'rgba(90,58,30,.55)';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(7, 7, CV_W - 14, CV_H - 14);
+        }
+
+        function drawGrid() {
+            const x0 = PAD_X, x1 = PAD_X + 8 * CELL, y0 = PAD_Y, y1 = PAD_Y + 9 * CELL;
+            ctx.save();
+            ctx.strokeStyle = '#6a4526';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            for (let c = 0; c <= 8; c++) {
+                ctx.moveTo(x0 + c * CELL, y0);
+                ctx.lineTo(x0 + c * CELL, y1);
+            }
+
+            for (let r = 0; r <= 9; r++) {
+                ctx.moveTo(x0, y0 + r * CELL);
+                ctx.lineTo(x1, y0 + r * CELL);
+            }
+
+            ctx.stroke();
+            // 外框加粗
+            ctx.lineWidth = 2.6;
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x0, y1);
+            ctx.moveTo(x1, y0);
+            ctx.lineTo(x1, y1);
+            ctx.stroke();
+            // 九宫斜线
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            const d = 2 * CELL;
+            ctx.moveTo(x0 + 3 * CELL, y0);
+            ctx.lineTo(x0 + 3 * CELL + d, y0 + d);
+            ctx.moveTo(x0 + 5 * CELL, y0);
+            ctx.lineTo(x0 + 5 * CELL - d, y0 + d);
+            ctx.moveTo(x0 + 3 * CELL, y1);
+            ctx.lineTo(x0 + 3 * CELL + d, y1 - d);
+            ctx.moveTo(x0 + 5 * CELL, y1);
+            ctx.lineTo(x0 + 5 * CELL - d, y1 - d);
+            ctx.stroke();
+            ctx.restore();
+
+            // 炮位、兵位的"炮位标记"
+            ctx.save();
+            ctx.strokeStyle = '#6a4526';
+            ctx.lineWidth = 1.6;
+            const marks = [];
+            for (const r of [2, 7])
+                for (const c of [1, 7])
+                    marks.push([r, c]);
+
+            for (const r of [3, 6])
+                for (const c of [0, 2, 4, 6, 8])
+                    marks.push([r, c]);
+
+            for (const [r, c] of marks) {
+                const p = viewPos(r, c);
+                const gap = 5, len = 7;
+                const sx = (c === 0) ? 1 : ((c === 8) ? -1 : 0);
+                const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+
+                for (const [ox, oy] of corners) {
+                    if (((c === 0) && (ox === -1)) || ((c === 8) && (ox === 1)))
+                        continue;
+
+                    const x = p.x + ox * gap, y = p.y + oy * gap;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y + oy * len);
+                    ctx.lineTo(x, y);
+                    ctx.lineTo(x + ox * len, y);
+                    ctx.stroke();
+                }
+            }
+
+            ctx.restore();
+
+            // 楚河汉界
+            ctx.save();
+            ctx.fillStyle = 'rgba(107,69,35,.72)';
+            ctx.font = '30px "KaiTi","STKaiti","SimSun",serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('楚', PAD_X + 1.5 * CELL, y0 + 4.5 * CELL);
+            ctx.fillText('河', PAD_X + 2.5 * CELL, y0 + 4.5 * CELL);
+            ctx.fillText('漢', PAD_X + 5.5 * CELL, y0 + 4.5 * CELL);
+            ctx.fillText('界', PAD_X + 6.5 * CELL, y0 + 4.5 * CELL);
+            ctx.restore();
+        }
+
+        function drawPieceAt(piece, x, y, alpha) {
+            const r = 24;
+            ctx.save();
+            ctx.globalAlpha = (alpha === undefined) ? 1 : alpha;
+            ctx.beginPath();
+            ctx.arc(x + 1.5, y + 2.5, r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(60,36,12,.30)';
+            ctx.fill();
+            const g = ctx.createRadialGradient(x - r * .35, y - r * .45, r * .12, x, y, r);
+            g.addColorStop(0, '#fffaf0');
+            g.addColorStop(.65, '#f2e4c6');
+            g.addColorStop(1, '#d6bf95');
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fillStyle = g;
+            ctx.fill();
+            const isRed = (colorOf(piece) === RED);
+            ctx.lineWidth = 2.2;
+            ctx.strokeStyle = isRed ? '#b8342c' : '#262626';
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(x, y, r - 4.5, 0, Math.PI * 2);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = isRed ? 'rgba(184,52,44,.55)' : 'rgba(38,38,38,.45)';
+            ctx.stroke();
+            ctx.fillStyle = isRed ? '#b8342c' : '#1d1d1d';
+            ctx.font = 'bold 33px "KaiTi","STKaiti","SimSun","Noto Serif SC",serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(pieceName(piece), x, y + 2);
+            ctx.restore();
+        }
+
+        function cornerMarks(p, color, len) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            const gap = 30, l = len || 13;
+            const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+
+            for (const [ox, oy] of corners) {
+                ctx.beginPath();
+                ctx.moveTo(p.x + ox * gap, p.y + oy * (gap - l));
+                ctx.lineTo(p.x + ox * gap, p.y + oy * gap);
+                ctx.lineTo(p.x + ox * (gap - l), p.y + oy * gap);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        let animTime = 0;
+        /* 画在棋子下层：可走位置提示 */
+        function drawUnderHighlights() {
+            for (const to of game.legal) {
+                const p = pointAt(to);
+                ctx.save();
+                if (game.board[to]) {
+                    ctx.strokeStyle = 'rgba(200,45,38,.95)';
+                    ctx.lineWidth = 3.4;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 25, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = 'rgba(30,110,70,.62)';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255,255,255,.45)';
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        /* 画在棋子上层：选中、上一步、被将军、键盘光标 */
+        function drawOverHighlights(t) {
+            const sel = game.selected;
+            if (sel >= 0) {
+                const p = pointAt(sel);
+                ctx.save();
+                ctx.strokeStyle = '#f3d27a';
+                ctx.lineWidth = 3.2;
+                ctx.shadowColor = 'rgba(243,210,122,.95)';
+                ctx.shadowBlur = 14;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 27, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            if (game.lastMove) {
+                const a = pointAt(game.lastMove.from), b = pointAt(game.lastMove.to);
+                cornerMarks(a, 'rgba(216,178,106,.95)', 12);
+                cornerMarks(b, 'rgba(216,178,106,.95)', 12);
+            }
+
+            const checked = !game.over && inCheck(game.board, game.turn);
+            if (checked) {
+                const ks = kingSquare(game.board, game.turn);
+                if (ks >= 0) {
+                    const p = pointAt(ks);
+                    ctx.save();
+                    ctx.strokeStyle = `rgba(220,60,50,${0.55 + 0.35 * Math.sin(t / 260)})`;
+                    ctx.lineWidth = 3.4;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 28, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            if ((game.cursor >= 0) && (document.activeElement === document.body)) {
+                const p = pointAt(game.cursor);
+                ctx.save();
+                ctx.strokeStyle = 'rgba(30,55,90,.8)';
+                ctx.lineWidth   = 1.8;
+                ctx.strokeRect(p.x - 13, p.y - 13, 26, 26);
+                ctx.restore();
+            }
+        }
+
+        let drawQueued = false;
+        function requestDraw() {
+            if (drawQueued) return;
+            drawQueued = true;
+            requestAnimationFrame(() => {
+                drawQueued = false;
+                drawBoard();
+            });
+        }
+
+        function drawBoard() {
+            const dpr = window.devicePixelRatio || 1;
+            if (canvas.width !== Math.round(CV_W * dpr)) {
+                canvas.width = Math.round(CV_W * dpr);
+                canvas.height = Math.round(CV_H * dpr);
+                canvas.style.width = '';
+            }
+
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, CV_W, CV_H);
+            drawWood();
+            drawGrid();
+            drawUnderHighlights();
+
+            for (let i = 0; i < 90; i++) {
+                const p = game.board[i];
+                if (!p)
+                    continue;
+
+                if (game.drag && (game.drag.from === i))
+                    continue;
+
+                const pos = pointAt(i);
+                drawPieceAt(p, pos.x, pos.y);
+            }
+
+            if (game.drag) {
+                const p = game.board[game.drag.from];
+                drawPieceAt(p, game.drag.x, game.drag.y, 0.95);
+            }
+
+            drawOverHighlights(animTime);
+        }
+
+        function animate(t) {
+            animTime = t;
+            if (!game.over && inCheck(game.board, game.turn))
+                requestDraw();
+
+            requestAnimationFrame(animate);
+        }
+
+        /* ===================== 界面渲染 ===================== */
+        const $ = id => document.getElementById(id);
+
+        function updateStatus() {
+            const dot     = $('turnDot'), info = $('turnInfo'), sub = $('statusInfo'), banner = $('banner');
+            const isRed   = (game.turn === RED);
+            dot.className = 'dot ' + (isRed ? 'red' : 'black');
+            if (game.aiThinking) {
+                info.textContent = '电脑思考中…';
+            } else {
+                let who = isRed ? '红方' : '黑方';
+                if (game.mode === 'ai')
+                    who += (game.turn === game.humanSide) ? '（你）' : '（电脑）';
+
+                info.textContent = who + '走棋';
+            }
+
+            let msg;
+            if (game.over)
+                msg = game.result;
+            else if (inCheck(game.board, game.turn))
+                msg = (isRed ? '红方' : '黑方') + '被将军！必须应将或走开被攻击的棋子。';
+            else if (game.selected >= 0)
+                msg = '已选中「' + pieceName(game.board[game.selected]) + '」，点击高亮位置落子。';
+            else
+                msg = '点击己方棋子选中，再点击目标位置走子；也可直接拖动棋子。';
+
+            sub.textContent    = msg;
+            banner.textContent = game.result;
+            banner.classList.toggle('hidden', !game.over);
+            $('btnUndo').disabled   = !game.history.length;
+            $('btnResign').disabled = game.over;
+        }
+
+        function renderMoves() {
+            const ol = $('moveList');
+            ol.innerHTML = '';
+            const h = game.history;
+
+            for (let i = 0; i < h.length; i += 2) {
+                const li = document.createElement('li');
+                const red = h[i], black = h[i + 1];
+                const no = document.createElement('span');
+                      no.className = 'no';
+                      no.textContent = (i / 2 + 1) + '.';
+                const mv = document.createElement('span');
+                      mv.className = 'mv';
+                const rs = document.createElement('span');
+                      rs.className = 'r';
+                      rs.textContent = red.note;
+
+                mv.appendChild(rs);
+                if (black) {
+                    mv.appendChild(document.createTextNode(' '));
+                    const bs       = document.createElement('span');
+                    bs.className   = 'b';
+                    bs.textContent = black.note;
+                    mv.appendChild(bs);
+                }
+
+                li.appendChild(no);
+                li.appendChild(mv);
+                ol.appendChild(li);
+            }
+
+            ol.scrollTop = ol.scrollHeight;
+            $('moveCount').textContent = '共 ' + h.length + ' 手';
+        }
+
+        function renderCaptured() {
+            const el = $('captured');
+            el.innerHTML = '';
+
+            for (const p of game.captured) {
+                const s = document.createElement('span');
+                s.className   = (colorOf(p) === RED) ? 'r' : 'b';
+                s.textContent = pieceName(p);
+                el.appendChild(s);
+            }
+        }
+
+        function updateAll() {
+            updateStatus();
+            renderMoves();
+            renderCaptured();
+            requestDraw();
+        }
+
+        function movesAsText() {
+            const lines = [];
+
+            for (let i = 0; i < game.history.length; i += 2) {
+                const r = game.history[i], b = game.history[i + 1];
+                lines.push((i / 2 + 1) + '. ' + r.note + (b ? ('  ' + b.note) : ''));
+            }
+
+            return lines.join('\n');
+        }
+
+        function copyMoves() {
+            const text = movesAsText();
+            const done = () => {
+                const btn = $('btnCopy'), old = btn.textContent;
+                btn.textContent = '已复制';
+                setTimeout(() => { btn.textContent = old; }, 1400);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+            }
+            else {
+                fallbackCopy(text, done);
+            }
+        }
+
+        function fallbackCopy(text, cb) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity  = '0';
+            document.body.appendChild(ta);
+            ta.select();
+
+            try {
+                document.execCommand('copy');
+                cb();
+            }
+            catch (e) {
+                /* 忽略 */
+            }
+
+            document.body.removeChild(ta);
+        }
+
+        /* ===================== 交互 ===================== */
+        function isAITurn() {
+            return ((game.mode === 'ai') && (game.turn !== game.humanSide) && !game.over);
+        }
+
+        function selectPiece(sq) {
+            if (game.selected === sq) {
+                game.selected = -1;
+                game.legal    = [];
+                requestDraw();
+                return;
+            }
+
+            game.selected = sq;
+            game.legal = legalFor(game.turn).filter(m => m.from === sq).map(m => m.to);
+            requestDraw();
+        }
+
+        function canvasPos(e) {
+            const r = canvas.getBoundingClientRect();
+            return { x: (e.clientX - r.left) * (CV_W / r.width), y: (e.clientY - r.top) * (CV_H / r.height) };
+        }
+
+        let pointerState = null;
+        canvas.addEventListener('pointerdown', e => {
+            if (game.over || isAITurn())
+                return;
+
+            const pos    = canvasPos(e);
+            const sq     = squareAt(pos.x, pos.y);
+            const p      = sq >= 0 ? game.board[sq] : null;
+            const own    = !!(p && (colorOf(p) === game.turn));
+            pointerState = { startX: e.clientX, startY: e.clientY, sq, moved: false, wasSelected: own && game.selected === sq };
+            if (!own)
+                return;
+
+            if (game.selected !== sq) {
+                game.selected = sq;
+                game.legal = legalFor(game.turn).filter(m => m.from === sq).map(m => m.to);
+            }
+
+            const v = viewPos(ROW(sq), COL(sq));
+            game.drag = { from: sq, x: v.x, y: v.y };
+            requestDraw();
+        });
+
+        canvas.addEventListener('pointermove', e => {
+            if (!pointerState)
+                return;
+
+            const dx = e.clientX - pointerState.startX, dy = e.clientY - pointerState.startY;
+
+            if (!pointerState.moved && dx * dx + dy * dy > 36)
+                pointerState.moved = true;
+
+            if (pointerState.moved && game.drag) {
+                const pos = canvasPos(e);
+                game.drag.x = pos.x;
+                game.drag.y = pos.y;
+                requestDraw();
+            }
+        });
+
+        canvas.addEventListener('pointerup', e => {
+            if (!pointerState)
+                return;
+
+            const ps = pointerState;
+            pointerState = null;
+            game.drag = null;
+
+            if (game.over || isAITurn()) {
+                requestDraw();
+                return;
+            }
+
+            const pos = canvasPos(e);
+            const sq = squareAt(pos.x, pos.y);
+
+            if (sq >= 0) {
+                const piece = game.board[sq];
+
+                if (piece && (colorOf(piece) === game.turn) && (sq !== game.selected)) {
+                    game.selected = sq;
+                    game.legal = legalFor(game.turn).filter(m => m.from === sq).map(m => m.to);
+                    requestDraw();
+                    return;
+                }
+
+                if (game.selected >= 0 && sq !== game.selected && game.legal.indexOf(sq) >= 0) {
+                    playMove(game.selected, sq);
+                    requestDraw();
+                    return;
+                }
+            }
+
+            if (!ps.moved) {
+                if (ps.wasSelected && (sq === ps.sq)) {
+                    game.selected = -1;
+                    game.legal    = [];
+                } else if (sq >= 0) {
+                    const piece = game.board[sq];
+                    if (!piece || (colorOf(piece) !== game.turn)) {
+                        game.selected = -1;
+                        game.legal    = [];
+                    }
+                }
+            }
+
+            requestDraw();
+        });
+
+        canvas.addEventListener('pointercancel', () => {
+            pointerState = null;
+            game.drag    = null;
+            requestDraw();
+        });
+
+        document.addEventListener('keydown', e => {
+            const tag = (e.target && e.target.tagName) || '';
+            if ((tag === 'SELECT') || (tag === 'INPUT') || (tag === 'TEXTAREA'))
+                return;
+
+            const k = e.key;
+
+            if ((k === 'ArrowUp') || (k === 'ArrowDown') || (k === 'ArrowLeft') || (k === 'ArrowRight')) {
+                e.preventDefault();
+                let r = ROW(game.cursor), c = COL(game.cursor);
+                const vUp = game.flip ? 1 : -1, vLeft = game.flip ? 1 : -1;
+                if (k === 'ArrowUp')
+                    r += vUp;
+                else if (k === 'ArrowDown')
+                    r -= vUp;
+                else if (k === 'ArrowLeft')
+                    c -= vLeft;
+                else
+                    c += vLeft;
+
+                if (r < 0 || r > 9 || c < 0 || c > 8)
+                    return;
+
+                game.cursor = IDX(r, c);
+                requestDraw();
+            } else if ((k === 'Enter') || (k === ' ')) {
+                e.preventDefault();
+                if (game.over || isAITurn())
+                    return;
+
+                const sq = game.cursor;
+                const piece = game.board[sq];
+                if (piece && (colorOf(piece) === game.turn))
+                    selectPiece(sq);
+                else if (game.selected >= 0 && game.legal.indexOf(sq) >= 0)
+                    playMove(game.selected, sq);
+            } else if (k === 'Escape') {
+                game.selected = -1;
+                game.legal    = [];
+                requestDraw();
+            } else if ((k === 'u') || (k === 'U'))
+                doUndo();
+            else if ((k === 'f') || (k === 'F'))
+                toggleFlip();
+        });
+
+        /* ===================== 音效 ===================== */
+        let audioCtx = null;
+        function playSound(kind) {
+            if (!game.sound)
+                return;
+
+            try {
+                audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended')
+                    audioCtx.resume();
+
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.connect(g);
+                g.connect(audioCtx.destination);
+                o.type = (kind === 'capture') ? 'triangle' : 'sine';
+                o.frequency.value = (kind === 'capture') ? 190 : 430;
+                const dur = (kind === 'capture') ? 0.22 : 0.09;
+                g.gain.setValueAtTime(0.07, audioCtx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+                o.start();
+                o.stop(audioCtx.currentTime + dur);
+            } catch (e) {
+                /* 音频不可用时静默 */
+            }
+        }
+
+        /* ===================== AI（Worker 优先，主线程兜底） ===================== */
+        const ENGINE_FNS = [
+            'typeOf',       'colorOf',    'mkPiece',       'ROW',        'COL', 'IDX', 'onBoard',
+            'inPalace',     'ownHalf',    'crossedRiver',  'posKey',
+            'kingSquare',   'isAttacked', 'inCheck',       'kingsFace',  'applyMove',  'undoMove',
+            'genMoves',     'legalMoves',
+            'mirrorSq',     'pstOf',      'rookFileBonus', 'pieceValue', 'kingDanger', 'evaluate',
+            'buildZobrist', 'hashBoard',  'orderMoves',    'ttStore',    'createSearchCtx',
+            'xqFlipSide',   'xqMake',     'xqUnmake',      'xqInCheck',  'xqKingsFace',
+            'xqQuiesce',    'xqSearch',   'bestMove'
+        ];
+
+        function buildWorkerSource() {
+            const p = [];
+            p.push('const RED=0,BLACK=1,EMPTY=0;');
+            p.push('const T_K=1,T_A=2,T_E=3,T_H=4,T_R=5,T_C=6,T_P=7;');
+            p.push('const VALUE=' + JSON.stringify(VALUE) + ',MATE=' + MATE +
+                ',MATE_IN_MAX=' + MATE_IN_MAX + ',INF=' + INF + ',MAX_PLY=' + MAX_PLY + ',MAX_HIST=' + MAX_HIST + ';');
+            p.push('const PST_PAWN=' + JSON.stringify(PST_PAWN) + ',PST_HORSE=' + JSON.stringify(PST_HORSE) +
+                ',PST_ROOK=' + JSON.stringify(PST_ROOK) + ',PST_CANNON=' + JSON.stringify(PST_CANNON) +
+                ',PST_ADVISOR=' + JSON.stringify(PST_ADVISOR) + ',PST_ELEPHANT=' + JSON.stringify(PST_ELEPHANT) +
+                ',PST_KING=' + JSON.stringify(PST_KING) + ';');
+            p.push('const DIRS_ORTHO=' + JSON.stringify(DIRS_ORTHO) + ',DIRS_DIAG=' + JSON.stringify(DIRS_DIAG) +
+                ',HORSE_STEPS=' + JSON.stringify(HORSE_STEPS) + ',HORSE_FROM=' + JSON.stringify(HORSE_FROM) + ';');
+            p.push('const TT_SIZE=1<<20,TT_MASK=TT_SIZE-1;');
+            p.push('const TT_KEY1=new Int32Array(TT_SIZE),TT_KEY2=new Int32Array(TT_SIZE),TT_MOVE=new Int32Array(TT_SIZE),TT_SCORE=new Int32Array(TT_SIZE),TT_DEPTH=new Int8Array(TT_SIZE),TT_FLAG=new Int8Array(TT_SIZE);');
+            p.push('const HIST=new Int32Array(8100);');
+            for (const n of ENGINE_FNS) p.push(window[n].toString() + ';');
+            p.push('const ZOBRIST=buildZobrist();');
+            p.push('self.onmessage=function(e){var d=e.data;var b=new Int8Array(d.board);var mv=null;try{mv=bestMove(b,d.side,d.level,d.rep||[]);}catch(err){mv=(legalMoves(b,d.side)[0]||null);}self.postMessage({id:d.id,mv:mv?{from:mv.from,to:mv.to}:null});};');
+
+            return p.join('\n');
+        }
+
+        function safeBestMove(boardArr, side, level, rep) {
+            try {
+                return bestMove(Int8Array.from(boardArr), side, level, rep || []);
+            } catch (e) {
+                const b = Int8Array.from(boardArr);
+                const ms = legalMoves(b, side);
+
+                return ms.length ? ms[0] : null;
+            }
+        }
+
+        let aiWorker = null, aiWorkerDead = false, aiToken = 0, aiTimer = null;
+        function ensureWorker() {
+            if (aiWorker || aiWorkerDead)
+                return aiWorker;
+
+            try {
+                const blob = new Blob([buildWorkerSource()], { type: 'text/javascript' });
+                aiWorker = new Worker(URL.createObjectURL(blob));
+                aiWorker.onerror = () => {
+                    aiWorkerDead = true;
+                    aiWorker = null;
+                };
+
+                aiWorker.onmessage = e => {
+                    const d = e.data;
+                    if (!d || d.id !== aiToken)
+                        return;   // 过期回包，直接丢弃
+
+                    if (aiTimer) {
+                        clearTimeout(aiTimer);
+                        aiTimer = null;
+                    }
+
+                    onAIMove(d.mv, d.id);
+                };
+            } catch (e) {
+                aiWorkerDead = true;
+                aiWorker     = null;
+            }
+
+            return aiWorker;
+        }
+
+        // 作废当前正在计算的请求，并丢弃其回包
+        function cancelAI() {
+            aiToken++;
+            if (aiTimer) {
+                clearTimeout(aiTimer);
+                aiTimer = null;
+            }
+
+            if (game.aiThinking && aiWorker) {
+                try {
+                    aiWorker.terminate();
+                }
+                catch (e) { }
+
+                aiWorker = null;
+            }
+
+            game.aiThinking = false;
+        }
+
+        /* 切换难度或新开局时清空搜索缓存，避免高难度缓存放进低难度对局 */
+        function resetEngineCache() {
+            TT_KEY1.fill(0);
+            TT_KEY2.fill(0);
+            TT_FLAG.fill(0);
+
+            if (aiWorker) {
+                try {
+                    aiWorker.terminate();
+                }
+                catch (e) {
+                    /* do nothing. */
+                }
+
+                aiWorker = null;
+            }
+        }
+
+        /* 当前局面之前出现过的局面散列（不含当前），用于搜索中的重复局面判定 */
+        function repetitionHistory() {
+            const h = game.history;
+            if (h.length < 2)
+                return [];
+
+            // 兵卒推进与吃子不可逆，之前的局面不可能再次出现
+            let start = 0;
+            for (let i = h.length - 1; i >= 0; i--) {
+                const mv = h[i].move;
+
+                if (mv.captured || (typeOf(mv.piece) === T_P)) {
+                    start = i;
+                    break;
+                }
+            }
+
+            const out = [];
+            for (let i = start; i < h.length - 1; i++) {
+                if (h[i].z1 !== undefined)
+                    out.push([h[i].z1, h[i].z2]);
+            }
+
+            return out;
+        }
+
+        function scheduleAI() {
+            if (game.over || (game.mode !== 'ai') || (game.turn === game.humanSide))
+                return;
+
+            // 能直接吃掉对方老将时，直接吃将获胜
+            const caps = kingCaptureMoves(game.board, game.turn);
+            if (caps.length) {
+                game.aiThinking = false;
+                playMove(caps[0].from, caps[0].to);
+                return;
+            }
+
+            game.aiThinking = true;
+            updateStatus();
+            if (aiTimer) {
+                clearTimeout(aiTimer);
+                aiTimer = null;
+            }
+
+            const token = ++aiToken;
+            const snapshot = Array.from(game.board);
+            const side = game.turn, level = game.level;
+            const rep = repetitionHistory();
+            const w = ensureWorker();
+
+            if (w) {
+                aiTimer = setTimeout(() => {
+                    aiTimer = null;
+                    if (token !== aiToken)
+                        return;
+
+                    onAIMove(safeBestMove(snapshot, side, level, rep), token);
+                }, 8000);
+
+                w.postMessage({ id: token, board: snapshot, side, level, rep });
+            } else {
+                aiTimer = setTimeout(() => {
+                    aiTimer = null;
+                    if (token !== aiToken)
+                        return;
+
+                    onAIMove(safeBestMove(snapshot, side, level, rep), token);
+                }, 30);
+            }
+        }
+
+        function onAIMove(mv, token) {
+            if ((token !== aiToken) || game.over || (game.mode !== 'ai') || (game.turn === game.humanSide)) {
+                game.aiThinking = false;
+                updateStatus();
+                return;
+            }
+
+            game.aiThinking = false;
+            aiToken++;   // 本请求已处理，作废可能迟到的重复回包
+            if (mv) {
+                if (playMove(mv.from, mv.to))
+                    return;
+
+                // 兜底：引擎走法与页面不一致时改用合法走法，避免停在“电脑思考中”
+                const ms = legalFor(game.turn);
+
+                if (ms.length) {
+                    playMove(ms[0].from, ms[0].to);
+                    return;
+                }
+            } else {
+                checkTerminal();
+            }
+
+            updateAll();
+        }
+
+        /* ===================== 按钮与初始化 ===================== */
+        function toggleFlip() {
+            game.flip = !game.flip;
+            requestDraw();
+        }
+
+        function doUndo() {
+            cancelAI();
+            undoLastMove();
+
+            // 悔棋后若轮到电脑，重新计算一步
+            if (!game.over && (game.mode === 'ai') && (game.turn !== game.humanSide))
+                scheduleAI();
+        }
+
+        function newGame() {
+            cancelAI();
+            resetEngineCache();
+            game.mode = $('mode').value;
+            game.level = parseInt($('level').value, 10);
+            const side = $('side').value;
+            game.humanSide = (side === 'black') ? BLACK : (side === 'random') ? (Math.random() < 0.5 ? RED : BLACK) : RED;
+            game.flip = ((game.mode === 'ai') && (game.humanSide === BLACK));
+            resetPosition();
+            checkTerminal();
+            updateAll();
+
+            if ((game.mode === 'ai') && (game.turn !== game.humanSide))
+                scheduleAI();
+        }
+
+        $('btnNew').addEventListener('click', newGame);
+        $('btnUndo').addEventListener('click', doUndo);
+        $('btnFlip').addEventListener('click', toggleFlip);
+        $('btnSound').addEventListener('click', () => {
+            game.sound = !game.sound;
+            $('btnSound').textContent = '音效 ' + (game.sound ? '开' : '关');
+            if (game.sound) playSound('move');
+        });
+        $('btnResign').addEventListener('click', () => {
+            if (game.over)
+                return;
+
+            const s = (game.turn === RED) ? '红方' : '黑方';
+            game.over = true;
+            game.result = s + '认输' + ((game.mode === 'ai') ? ((game.turn === game.humanSide) ? '，你输了' : '，你赢了') : '');
+            updateAll();
+        });
+        $('btnRules').addEventListener('click', () => $('modal').classList.remove('hidden'));
+        $('btnCloseModal').addEventListener('click', () => $('modal').classList.add('hidden'));
+        $('modal').addEventListener('click', e => {
+            if (e.target === $('modal'))
+                $('modal').classList.add('hidden');
+        });
+        $('btnCopy').addEventListener('click', copyMoves);
+        $('mode').addEventListener('change', newGame);
+        $('side').addEventListener('change', newGame);
+        $('level').addEventListener('change', () => {
+            game.level = parseInt($('level').value, 10);
+            if (!game.aiThinking)
+                resetEngineCache();
+        });
+        window.addEventListener('resize', requestDraw);
+
+        newGame();
+        requestAnimationFrame(animate);
+
+    </script>
+</body>
+
+</html>
