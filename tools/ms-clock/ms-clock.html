@@ -34,16 +34,14 @@
     <div id="clock">00:00:00.000</div>
     <script>
         const el = document.getElementById('clock');
-        const pad = (n, w) => String(n).padStart(w, '0');
+        const p2 = n => String(n).padStart(2, '0');
+        const p3 = n => String(n).padStart(3, '0');
 
         function tick() {
-            const d = new Date();
+            // 关键：每帧直接读系统时间
+            const d = new Date(Date.now());
             el.textContent =
-                pad(d.getHours(),   2) + ':' +
-                pad(d.getMinutes(), 2) + ':' +
-                pad(d.getSeconds(), 2) + '.' +
-                pad(d.getMilliseconds(), 3);
-
+                `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}.${p3(d.getMilliseconds())}`;
             requestAnimationFrame(tick);
         }
 
